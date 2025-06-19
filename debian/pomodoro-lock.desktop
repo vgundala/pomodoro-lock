@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pomodoro Lock
+Comment=Multi-display Pomodoro timer with screen overlay
+Exec=pomodoro-configure
+Icon=appointment
+Terminal=false
+Categories=Utility;Productivity;
+Keywords=pomodoro;timer;productivity;focus; 

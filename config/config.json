@@ -1,0 +1,6 @@
+{
+    "work_time_minutes": 30,
+    "break_time_minutes": 5,
+    "notification_time_minutes": 2,
+    "inactivity_threshold_minutes": 10
+} 

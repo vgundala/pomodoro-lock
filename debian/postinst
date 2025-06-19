@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+
+# Post-installation script for pomodoro-lock
+
+# Reload systemd user daemon
+systemctl --user daemon-reload
+
+# Create user configuration directory if it doesn't exist
+mkdir -p /home/$SUDO_USER/.local/share/pomodoro-lock/config
+
+# Copy default config to user directory if it doesn't exist
+if [ ! -f /home/$SUDO_USER/.local/share/pomodoro-lock/config/config.json ]; then
+    cp /etc/pomodoro-lock/config.json /home/$SUDO_USER/.local/share/pomodoro-lock/config/
+    chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.local/share/pomodoro-lock/config/config.json
+fi
+
+# Copy service file to user directory
+mkdir -p /home/$SUDO_USER/.config/systemd/user/
+cp /etc/systemd/user/pomodoro-lock.service /home/$SUDO_USER/.config/systemd/user/
+chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.config/systemd/user/pomodoro-lock.service
+
+# Reload systemd user daemon again
+systemctl --user daemon-reload
+
+echo "Pomodoro Lock has been installed successfully!"
+echo ""
+echo "To get started:"
+echo "1. Configure the application: pomodoro-configure"
+echo "2. Start the service: systemctl --user start pomodoro-lock.service"
+echo "3. Enable auto-start: systemctl --user enable pomodoro-lock.service"
+echo ""
+echo "For more information, see: /usr/share/doc/pomodoro-lock/README.md" 

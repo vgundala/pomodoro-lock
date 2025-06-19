@@ -1,0 +1,45 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with python3
+
+override_dh_auto_install:
+	dh_auto_install
+	
+	# Install Python package
+	mkdir -p debian/pomodoro-lock/usr/lib/python3/dist-packages/
+	cp -r src/* debian/pomodoro-lock/usr/lib/python3/dist-packages/
+	
+	# Install scripts
+	mkdir -p debian/pomodoro-lock/usr/bin/
+	cp scripts/configure-pomodoro.py debian/pomodoro-lock/usr/bin/pomodoro-configure
+	cp scripts/start-pomodoro.sh debian/pomodoro-lock/usr/bin/pomodoro-start
+	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-configure
+	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-start
+	
+	# Install configuration files
+	mkdir -p debian/pomodoro-lock/etc/pomodoro-lock/
+	cp config/config.json debian/pomodoro-lock/etc/pomodoro-lock/
+	
+	# Install systemd service files
+	mkdir -p debian/pomodoro-lock/etc/systemd/user/
+	cp config/pomodoro-lock.service debian/pomodoro-lock/etc/systemd/user/
+	
+	# Install documentation
+	mkdir -p debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
+	cp README.md debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
+	cp docs/README.md debian/pomodoro-lock/usr/share/doc/pomodoro-lock/DETAILED.md
+	cp LICENSE debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
+	cp CONTRIBUTING.md debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
+	
+	# Install desktop file
+	mkdir -p debian/pomodoro-lock/usr/share/applications/
+	cp debian/pomodoro-lock.desktop debian/pomodoro-lock/usr/share/applications/
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-configure
+	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-start
+
+override_dh_installdocs:
+	dh_installdocs README.md docs/README.md LICENSE CONTRIBUTING.md 
