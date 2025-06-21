@@ -1,11 +1,5 @@
 pomodoro-lock (1.0.0-1) unstable; urgency=medium
 
-  * Initial release
-  * Multi-display Pomodoro timer with screen overlay
-  * Systemd service integration
-  * Configurable work/break periods
-  * Desktop notifications
-  * Inactivity detection
-  * Cross-desktop compatibility
+  * Initial release.
 
- -- Pomodoro Lock Dev <vg@ivdata.dev>  $(date -R) 
+ -- Vinay Gundala <vg@ivdata.dev>  Tue, 01 Jan 2024 00:00:00 +0000 

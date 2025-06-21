@@ -240,8 +240,9 @@ logs:
 
 # Packaging
 package-pip:
-	@echo "Building Python package..."
-	@python3 setup.py sdist bdist_wheel
+	@echo "Building Python package with modern tools..."
+	@pip install --upgrade build
+	@python3 -m build
 	@echo "Package built in dist/ directory"
 
 package-deb:

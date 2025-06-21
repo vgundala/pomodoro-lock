@@ -2,30 +2,17 @@ Source: pomodoro-lock
 Section: utils
 Priority: optional
 Maintainer: Vinay Gundala <vg@ivdata.dev>
-Build-Depends: debhelper (>= 11), dh-python, python3-all, python3-setuptools
-Standards-Version: 4.5.1
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
+Standards-Version: 4.6.2
+Homepage: https://github.com/vgundala/pomodoro-lock
 
 Package: pomodoro-lock
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends},
-         python3-gi,
-         python3-psutil,
-         python3-xlib,
-         python3-notify2,
-         systemd,
-         dbus-user-session
+Depends: ${python3:Depends}, ${misc:Depends}, python3-gi, python3-psutil, python3-xlib, python3-notify2
 Description: Multi-display Pomodoro timer with screen overlay
- A comprehensive Pomodoro timer application that helps you maintain
- focus during work sessions and enforces breaks with full-screen
- overlays across all connected displays.
+ A comprehensive Pomodoro timer application that helps you maintain focus during
+ work sessions and enforces breaks with full-screen overlays across all
+ connected displays.
  .
- Features:
-  * Multi-display support with full-screen overlays
-  * Visual countdown timer
-  * Desktop notifications
-  * Configurable work/break periods
-  * Systemd service integration
-  * Cross-desktop compatibility
- .
- This application uses screen overlays instead of system screen locks
- for better compatibility across different desktop environments. 
+ It runs as a user or system service and is designed to be compatible with
+ most modern desktop environments. 

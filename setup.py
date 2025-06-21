@@ -14,7 +14,8 @@ def read_readme():
 
 # Read requirements
 def read_requirements():
-    with open("requirements.txt", "r", encoding="utf-8") as fh:
+    requirements_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
+    with open(requirements_path, "r", encoding="utf-8") as fh:
         return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 setup(
@@ -48,16 +49,14 @@ setup(
     entry_points={
         "console_scripts": [
             "pomodoro-lock=src.pomodoro_lock:main",
+            "pomodoro-configure=scripts.configure_pomodoro:main",
+            "pomodoro-start=scripts.start_pomodoro:main",
         ],
     },
     include_package_data=True,
     package_data={
-        "": ["config/*.json", "config/*.service"],
+        "": ["config/*.json", "config/*.service", "scripts/*"],
     },
-    scripts=[
-        "scripts/configure-pomodoro.py",
-        "scripts/start-pomodoro.sh",
-    ],
     keywords="pomodoro timer productivity focus desktop linux gtk",
     project_urls={
         "Bug Reports": "https://github.com/vgundala/pomodoro-lock/issues",
