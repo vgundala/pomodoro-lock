@@ -14,12 +14,26 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 git clone https://github.com/vgundala/pomodoro-lock.git
 cd pomodoro-lock
 
-# Install as user service (starts automatically)
+# Check dependencies first (recommended)
+make check-deps
+
+# Smart installer (auto-selects best method)
 make install
+
+# Or install using virtual environment (only if venv is already available)
+make install-user-venv
+
+# Or install using robust installation (fallback for tricky systems)
+make install-user-robust
+
+# Or install using desktop installer (legacy/desktop integration)
+make install-desktop
 
 # Or install without auto-start
 make install-and-start
 ```
+
+**Note:** Some installation methods may require admin access to install system dependencies. If you don't have sudo privileges, contact your system administrator or use `make check-deps` to see what's available on your system.
 
 #### Option 2: System Service (For multiple users)
 ```bash
@@ -243,6 +257,13 @@ make package-deb
 sudo dpkg -i ../pomodoro-lock_1.0.0-1_all.deb
 ```
 
+### AppImage
+```bash
+make package-appimage
+# The AppImage can be run directly without installation
+./Pomodoro_Lock-1.0.0-x86_64.AppImage
+```
+
 For detailed packaging information, see [PACKAGING.md](PACKAGING.md).
 
 ## Requirements
@@ -251,7 +272,7 @@ For detailed packaging information, see [PACKAGING.md](PACKAGING.md).
 - Python 3.6+
 - GTK3 desktop environment
 - User account (not root for user service)
-- Root access (for system service installation)
+- **Admin access may be required** for installing system dependencies (python3-venv, python3-gi, etc.)
 
 ## Development
 
@@ -326,4 +347,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**Note**: This application uses screen overlays instead of system screen locks for better compatibility across different desktop environments and to ensure the timer remains visible during break periods. 
+**Note**: This application uses screen overlays instead of system screen locks for better compatibility across different desktop environments and to ensure the timer remains visible during break periods.

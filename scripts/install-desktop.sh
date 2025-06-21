@@ -86,7 +86,7 @@ echo "The service will start automatically on login."
 echo ""
 echo "Would you like to start the service now? (y/n)"
 read -r response
-if [[ "$response" =~ ^[Yy]$ ]]; then
+if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
     echo "Starting Pomodoro Lock service..."
     systemctl --user start pomodoro-lock.service
     echo "Service started! Check status with: systemctl --user status pomodoro-lock.service"

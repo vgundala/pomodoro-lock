@@ -30,7 +30,7 @@ print_error() {
 }
 
 # Check if running as root
-if [[ $EUID -ne 0 ]]; then
+if [ $EUID -ne 0 ]; then
    print_error "This script must be run as root (use sudo)"
    exit 1
 fi
@@ -62,7 +62,7 @@ show_usage() {
 add_user() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -85,7 +85,7 @@ add_user() {
     cp scripts/configure-pomodoro.py /home/$username/.local/share/pomodoro-lock/
     
     # Copy default config if it doesn't exist
-    if [[ ! -f /home/$username/.local/share/pomodoro-lock/config/config.json ]]; then
+    if [ ! -f /home/$username/.local/share/pomodoro-lock/config/config.json ]; then
         cp config/config.json /home/$username/.local/share/pomodoro-lock/config/
     fi
     
@@ -124,7 +124,7 @@ EOF
 remove_user() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -139,9 +139,9 @@ remove_user() {
     rm -f /etc/systemd/system/pomodoro-lock@$username.service
     
     # Remove user directories (optional - ask first)
-    read -p "Remove user directories for $username? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    printf "Remove user directories for %s? (y/N): " "$username"
+    read -r REPLY
+    if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
         rm -rf /home/$username/.local/share/pomodoro-lock
         rm -rf /home/$username/.config/pomodoro-lock
         rm -f /home/$username/.local/share/applications/pomodoro-lock.desktop
@@ -160,7 +160,7 @@ list_users() {
     
     # Find all service files
     for service_file in /etc/systemd/system/pomodoro-lock@*.service; do
-        if [[ -f "$service_file" ]]; then
+        if [ -f "$service_file" ]; then
             username=$(basename "$service_file" | sed 's/pomodoro-lock@\(.*\)\.service/\1/')
             status=$(systemctl is-active pomodoro-lock@$username.service 2>/dev/null || echo "unknown")
             enabled=$(systemctl is-enabled pomodoro-lock@$username.service 2>/dev/null || echo "unknown")
@@ -169,7 +169,7 @@ list_users() {
         fi
     done
     
-    if [[ ! -f /etc/systemd/system/pomodoro-lock@*.service ]]; then
+    if [ ! -f /etc/systemd/system/pomodoro-lock@*.service ]; then
         print_warning "No users found with Pomodoro Lock service"
     fi
 }
@@ -178,7 +178,7 @@ list_users() {
 check_status() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -192,7 +192,7 @@ check_status() {
 start_service() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -206,7 +206,7 @@ start_service() {
 stop_service() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -220,7 +220,7 @@ stop_service() {
 restart_service() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi
@@ -234,7 +234,7 @@ restart_service() {
 show_logs() {
     local username=$1
     
-    if [[ -z "$username" ]]; then
+    if [ -z "$username" ]; then
         print_error "Username is required"
         exit 1
     fi

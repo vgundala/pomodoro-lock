@@ -1,16 +1,21 @@
 # Pomodoro Lock Makefile
 
-.PHONY: help install install-desktop install-system test test-all clean uninstall configure package-pip package-deb
+.PHONY: help install install-desktop install-system test test-all clean uninstall configure package-pip package-deb package-appimage generate-icons install-pip
 
 # Default target
 help:
 	@echo "Pomodoro Lock - Available Commands:"
 	@echo ""
 	@echo "Installation:"
-	@echo "  make install          - Install using command line installer (user service)"
+	@echo "  make install          - Smart installer (automatically chooses best method)"
+	@echo "  make install-user-venv - Install using virtual environment (recommended for no-sudo)"
+	@echo "  make install-user-robust - Install using robust installation (fallback)"
 	@echo "  make install-and-start - Install and automatically start the service"
-	@echo "  make install-desktop  - Install using desktop installer (user service, recommended)"
+	@echo "  make install-desktop  - Install using desktop installer (user service)"
 	@echo "  make install-system   - Install as system service (requires sudo)"
+	@echo ""
+	@echo "Dependency Management:"
+	@echo "  make check-deps       - Check system dependencies and provide guidance"
 	@echo ""
 	@echo "User Management (System Service):"
 	@echo "  make add-user USER=username    - Add service for a user"
@@ -47,11 +52,17 @@ help:
 	@echo "Packaging:"
 	@echo "  make package-pip      - Build Python package (pip)"
 	@echo "  make package-deb      - Build Debian package (.deb)"
+	@echo "  make package-appimage - Build AppImage"
+	@echo "  make generate-icons   - Generate PNG icons from SVG"
 	@echo "  make install-pip      - Install Python package in development mode"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean            - Clean up temporary files"
 	@echo "  make uninstall        - Uninstall the user service"
+	@echo ""
+	@echo "GitHub Actions:"
+	@echo "  make github-release VERSION=x.y.z - Create GitHub release with packages"
+	@echo "  make github-test      - Test build process locally"
 
 # Installation
 install:
@@ -76,6 +87,21 @@ install-system:
 	@echo "Installing Pomodoro Lock (System Service)..."
 	@chmod +x scripts/install-system.sh
 	@sudo ./scripts/install-system.sh
+
+install-user-robust:
+	@echo "Installing Pomodoro Lock (User Service - Robust Installation)..."
+	@chmod +x scripts/install-user-robust.sh
+	@./scripts/install-user-robust.sh
+
+install-minimal:
+	@echo "Installing Pomodoro Lock (User Service - Minimal Installation)..."
+	@chmod +x scripts/install-minimal.sh
+	@./scripts/install-minimal.sh
+
+check-deps:
+	@echo "Checking Pomodoro Lock dependencies..."
+	@chmod +x scripts/check-dependencies.sh
+	@./scripts/check-dependencies.sh
 
 # User Management (System Service)
 add-user:
@@ -223,6 +249,17 @@ package-deb:
 	@dpkg-buildpackage -b -us -uc
 	@echo "Debian package built in parent directory"
 
+package-appimage:
+	@echo "Building AppImage..."
+	@chmod +x scripts/build-appimage.sh
+	@./scripts/build-appimage.sh
+	@echo "AppImage built successfully"
+
+generate-icons:
+	@echo "Generating PNG icons from SVG..."
+	@chmod +x scripts/generate-icons.sh
+	@./scripts/generate-icons.sh
+
 install-pip:
 	@echo "Installing Python package in development mode..."
 	@pip install -e .
@@ -243,4 +280,21 @@ uninstall:
 	@rm -f ~/.config/systemd/user/pomodoro-lock.service
 	@systemctl --user daemon-reload
 	@rm -rf ~/.local/share/pomodoro-lock/
-	@echo "Pomodoro Lock has been completely uninstalled." 
+	@echo "Pomodoro Lock has been completely uninstalled."
+
+# GitHub Actions
+github-release:
+	@echo "Creating GitHub release..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION parameter is required. Example: make github-release VERSION=1.0.0"; \
+		exit 1; \
+	fi
+	@echo "Creating tag v$(VERSION)..."
+	@git tag -a v$(VERSION) -m "Release v$(VERSION)"
+	@git push origin v$(VERSION)
+	@echo "Tag pushed. GitHub Actions will build and release packages automatically."
+
+github-test:
+	@echo "Testing GitHub Actions workflow locally..."
+	@echo "This will test the build process without creating a release..."
+	@echo "To test locally, run: make package-pip && make package-deb" 

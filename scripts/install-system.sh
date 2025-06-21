@@ -30,7 +30,7 @@ print_error() {
 }
 
 # Check if running as root
-if [[ $EUID -ne 0 ]]; then
+if [ $EUID -ne 0 ]; then
    print_error "This script must be run as root (use sudo)"
    exit 1
 fi
@@ -39,7 +39,7 @@ print_status "Installing Pomodoro Lock as system service..."
 
 # Get the current user (who invoked sudo)
 CURRENT_USER=${SUDO_USER:-$USER}
-if [[ -z "$CURRENT_USER" ]]; then
+if [ -z "$CURRENT_USER" ]; then
     print_error "Could not determine current user"
     exit 1
 fi
