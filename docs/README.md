@@ -24,7 +24,6 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 - **Multi-Display Support**: Full-screen overlays on all connected monitors
 - **Visual Timer**: Draggable countdown timer in bottom-left corner
 - **Notifications**: Desktop notifications before break periods
-- **Inactivity Detection**: Resets timer if user is inactive for too long
 - **Configuration**: JSON-based configuration for customizing timers
 
 ### ✅ Technical Features
@@ -41,8 +40,6 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 1. Shows a small, draggable timer in the bottom-left corner
 2. Counts down from work time (configurable)
 3. Sends notification 2 minutes before break
-4. Detects user activity (mouse movement, sound playing)
-5. Resets timer if user is inactive for threshold period
 
 ### Break Period (configurable, default: 5 minutes)
 1. Creates full-screen overlays on ALL connected displays
@@ -54,6 +51,10 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 ### Cycle
 - Work → Break → Work → Break → (repeats indefinitely)
 
+## Future Enhancements
+
+- Re-implement robust user inactivity detection (e.g., using evdev for keyboard/mouse input or other screen activity monitoring methods).
+
 ## Installation
 
 ### Prerequisites
@@ -64,7 +65,20 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 
 ### Quick Installation
 
-#### Option 1: Desktop Installation (Recommended)
+#### Option 1: Make-based Installation (Recommended)
+```bash
+# Clone or download the repository
+git clone https://github.com/vgundala/pomodoro-lock.git
+cd pomodoro-lock
+
+# Install as user service (starts automatically)
+make install
+
+# Or install without auto-start
+make install-and-start
+```
+
+#### Option 2: Desktop Installation (Legacy)
 ```bash
 # Clone or download the repository
 git clone https://github.com/vgundala/pomodoro-lock.git
@@ -74,7 +88,7 @@ cd pomodoro-lock
 ./scripts/install-desktop.sh
 ```
 
-#### Option 2: Command Line Installation
+#### Option 3: Command Line Installation (Legacy)
 ```bash
 # Clone or download the repository
 cd pomodoro-lock
@@ -133,6 +147,20 @@ Location: `~/.local/share/pomodoro-lock/config/config.json`
 
 ### Configuration Management
 
+#### Using Make Commands (Recommended)
+```bash
+# Interactive configuration
+make configure
+
+# Quick presets
+make configure-standard  # Apply standard preset (25/5)
+make configure-long      # Apply long session preset (45/15)
+make configure-short     # Apply short session preset (15/3)
+
+# Show current configuration
+make configure-show
+```
+
 #### Interactive Configuration
 ```bash
 # Run interactive configuration
@@ -176,7 +204,19 @@ systemctl --user restart pomodoro-lock.service
 
 ## Service Management
 
-### Start/Stop Service
+### Using Make Commands (Recommended)
+```bash
+# Start/Stop/Restart
+make start
+make stop
+make restart
+
+# Check status and logs
+make status
+make logs
+```
+
+### Using Systemctl Commands (Alternative)
 ```bash
 # Start the service
 systemctl --user start pomodoro-lock.service
@@ -190,10 +230,16 @@ systemctl --user restart pomodoro-lock.service
 
 ### Check Status
 ```bash
-# Check service status
+# Using make (recommended)
+make status
+
+# Using systemctl
 systemctl --user status pomodoro-lock.service
 
 # View real-time logs
+make logs
+
+# Or using journalctl
 journalctl --user -u pomodoro-lock.service -f
 
 # View recent logs
@@ -209,7 +255,42 @@ systemctl --user enable pomodoro-lock.service
 systemctl --user disable pomodoro-lock.service
 ```
 
+### Installation Behavior
+
+#### New Installation Process (make install)
+The `make install` command now automatically:
+1. Installs all necessary files
+2. Enables the systemd service for auto-start on login
+3. **Starts the service immediately** (new behavior)
+
+This means the Pomodoro Lock will be running right after installation without requiring manual intervention.
+
+#### Manual Service Control
+If you prefer to start the service manually after installation:
+```bash
+# Install without auto-start
+make install-and-start
+
+# Or install and then manually control
+make install
+make start    # Start when ready
+make stop     # Stop when needed
+```
+
 ## Testing
+
+### Using Make Commands (Recommended)
+```bash
+# Run all tests
+make test
+
+# Run individual tests
+make test-notification
+make test-overlay
+make test-timer
+make test-multi
+make test-workflow
+```
 
 ### Individual Component Tests
 The repository includes test scripts for each component:
@@ -248,10 +329,17 @@ python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
 ### Common Issues
 
 #### Service Won't Start
-1. Check service status: `systemctl --user status pomodoro-lock.service`
-2. View logs: `journalctl --user -u pomodoro-lock.service -f`
+1. Check service status: `make status` or `systemctl --user status pomodoro-lock.service`
+2. View logs: `make logs` or `journalctl --user -u pomodoro-lock.service -f`
 3. Ensure display is ready: `xset q`
 4. Check file permissions: `ls -la ~/.local/share/pomodoro-lock/`
+5. Try restarting: `make restart`
+
+#### Service Exits Immediately
+1. Check if the service is configured correctly: `make status`
+2. View recent logs: `journalctl --user -u pomodoro-lock.service -n 20`
+3. Verify environment variables are set correctly
+4. Check if the start script has proper permissions: `ls -la ~/.local/share/pomodoro-lock/start-pomodoro.sh`
 
 #### Overlay Not Appearing
 1. Check if multiple displays are detected
@@ -263,7 +351,7 @@ python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
 1. Check if the timer window is behind other windows
 2. Look in the bottom-left corner of your primary display
 3. Try dragging the timer to a different position
-4. Check if the service is running: `systemctl --user status pomodoro-lock.service`
+4. Check if the service is running: `make status`
 
 ### Log Files
 - **Service Logs**: `journalctl --user -u pomodoro-lock.service`

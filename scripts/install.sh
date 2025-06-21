@@ -65,6 +65,10 @@ sed -i "s|/run/user/1000|/run/user/$USER_ID|g" ~/.config/systemd/user/pomodoro-l
 systemctl --user daemon-reload
 systemctl --user enable pomodoro-lock.service
 
+# Start the service automatically
+echo "Starting Pomodoro Lock service..."
+systemctl --user start pomodoro-lock.service
+
 echo "Installation complete!"
 echo ""
 echo "Service Management Commands:"
@@ -77,5 +81,4 @@ echo "Configuration:"
 echo "  Config file:       ~/.local/share/pomodoro-lock/config/config.json"
 echo "  Log file:          ~/.local/share/pomodoro-lock/pomodoro.log"
 echo ""
-echo "The service will start automatically on login."
-echo "To start it now, run: systemctl --user start pomodoro-lock.service" 
+echo "The service is now running and will start automatically on login." 

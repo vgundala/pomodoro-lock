@@ -8,6 +8,7 @@ help:
 	@echo ""
 	@echo "Installation:"
 	@echo "  make install          - Install using command line installer (user service)"
+	@echo "  make install-and-start - Install and automatically start the service"
 	@echo "  make install-desktop  - Install using desktop installer (user service, recommended)"
 	@echo "  make install-system   - Install as system service (requires sudo)"
 	@echo ""
@@ -57,6 +58,14 @@ install:
 	@echo "Installing Pomodoro Lock (User Service)..."
 	@chmod +x scripts/install.sh
 	@./scripts/install.sh
+
+install-and-start:
+	@echo "Installing Pomodoro Lock (User Service) and starting it..."
+	@chmod +x scripts/install.sh
+	@./scripts/install.sh
+	@echo "Starting service..."
+	@systemctl --user start pomodoro-lock.service
+	@echo "Service started successfully!"
 
 install-desktop:
 	@echo "Installing Pomodoro Lock (Desktop - User Service)..."
@@ -233,5 +242,5 @@ uninstall:
 	@systemctl --user disable pomodoro-lock.service 2>/dev/null || true
 	@rm -f ~/.config/systemd/user/pomodoro-lock.service
 	@systemctl --user daemon-reload
-	@echo "Service uninstalled. To remove all files, run:"
-	@echo "  rm -rf ~/.local/share/pomodoro-lock" 
+	@rm -rf ~/.local/share/pomodoro-lock/
+	@echo "Pomodoro Lock has been completely uninstalled." 

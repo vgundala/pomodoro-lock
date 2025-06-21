@@ -10,17 +10,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Improved Installation Process**
+  - `make install` now automatically starts the service after installation
+  - New `make install-and-start` target for explicit installation with auto-start
+  - Enhanced start script with robust environment variable handling
+  - Better error handling and fallback mechanisms for service startup
+
+- **Enhanced Service Management**
+  - New make commands for service management: `make start`, `make stop`, `make restart`, `make status`, `make logs`
+  - Improved system service user management with make commands
+  - Better troubleshooting and debugging capabilities
+
+- **Documentation Updates**
+  - Updated README.md with new installation options and make commands
+  - Enhanced detailed documentation with improved service management instructions
+  - Added troubleshooting section for common service issues
+  - Updated configuration management documentation
+
+### Changed
+- **Installation Behavior**: `make install` now starts the service automatically instead of just enabling it
+- **Service Configuration**: Fixed deprecated systemd specifiers and improved environment variable handling
+- **Start Script**: Enhanced robustness with multiple fallback strategies for environment variables
+- **Documentation**: Streamlined installation and service management instructions using make commands
+
+### Fixed
+- **Service Startup Issues**: Resolved problems with service exiting immediately after installation
+- **Environment Variables**: Fixed issues with DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR detection
+- **Systemd Configuration**: Removed deprecated `%R` specifier that was causing warnings
+
+### Technical Improvements
+- **Start Script Robustness**: Added multiple fallback methods for environment variable detection
+- **Error Handling**: Improved error handling in installation and startup processes
+- **Service Reliability**: Enhanced service startup reliability across different desktop environments
+
+### Added
 - Comprehensive project organization and structure
 - Debian packaging support
 - Python packaging support
 - Makefile with development commands
 - Detailed documentation and guides
 - Copyright information and licensing
-
-### Changed
-- Reorganized project structure for better maintainability
-- Updated all documentation with proper attribution
-- Improved installation scripts for new directory structure
 
 ## [1.0.0] - 2024-12-19
 

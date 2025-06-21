@@ -23,7 +23,6 @@ Description: Multi-display Pomodoro timer with screen overlay
   * Multi-display support with full-screen overlays
   * Visual countdown timer
   * Desktop notifications
-  * Inactivity detection
   * Configurable work/break periods
   * Systemd service integration
   * Cross-desktop compatibility

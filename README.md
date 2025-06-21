@@ -14,8 +14,11 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 git clone https://github.com/vgundala/pomodoro-lock.git
 cd pomodoro-lock
 
-# Install as user service
-./scripts/install-desktop.sh
+# Install as user service (starts automatically)
+make install
+
+# Or install without auto-start
+make install-and-start
 ```
 
 #### Option 2: System Service (For multiple users)
@@ -25,16 +28,18 @@ git clone https://github.com/vgundala/pomodoro-lock.git
 cd pomodoro-lock
 
 # Install as system service (requires sudo)
-sudo ./scripts/install-system.sh
+make install-system
 ```
 
 ### Configuration
 ```bash
 # Interactive configuration
-pomodoro-configure
+make configure
 
 # Quick presets
-pomodoro-configure standard
+make configure-standard  # 25/5
+make configure-long      # 45/15
+make configure-short     # 15/3
 ```
 
 ### Service Management
@@ -42,10 +47,13 @@ pomodoro-configure standard
 #### User Service
 ```bash
 # Start the service
-systemctl --user start pomodoro-lock.service
+make start
 
 # Check status
-systemctl --user status pomodoro-lock.service
+make status
+
+# View logs
+make logs
 ```
 
 #### System Service
@@ -54,10 +62,10 @@ systemctl --user status pomodoro-lock.service
 systemctl status pomodoro-lock@$USER.service
 
 # Add service for another user
-sudo ./scripts/manage-users.sh add username
+make add-user USER=username
 
 # List all users with service
-sudo ./scripts/manage-users.sh list
+make list-users
 ```
 
 ## Project Structure
@@ -102,7 +110,6 @@ pomodoro-lock/
 - ✅ **Multi-Display Support**: Full-screen overlays on all connected monitors
 - ✅ **Visual Timer**: Draggable countdown timer in bottom-left corner
 - ✅ **Notifications**: Desktop notifications before break periods
-- ✅ **Inactivity Detection**: Resets timer if user is inactive for too long
 - ✅ **Configuration**: JSON-based configuration with easy management
 - ✅ **Systemd Service**: Runs as user or system service, starts automatically on login
 - ✅ **Cross-Desktop**: Works with GNOME, KDE, XFCE, and other desktop environments
@@ -115,6 +122,10 @@ pomodoro-lock/
 2. **Break Period**: Creates full-screen overlays on all displays with countdown
 3. **Cycle**: Work → Break → Work → Break → (repeats indefinitely)
 
+## Future Enhancements
+
+- Re-implement robust user inactivity detection (e.g., using evdev for keyboard/mouse input or other screen activity monitoring methods).
+
 ## Installation Methods
 
 ### User Service (Default)
@@ -122,7 +133,7 @@ pomodoro-lock/
 - **Permissions**: User-level
 - **Location**: `~/.local/share/pomodoro-lock/`
 - **Service**: `pomodoro-lock.service`
-- **Management**: `systemctl --user`
+- **Management**: `systemctl --user` (for user service)
 
 ### System Service (Advanced)
 - **Scope**: Multiple users
@@ -186,13 +197,13 @@ sudo nano /etc/pomodoro-lock/config.json
 ### User Service
 ```bash
 # Start/Stop/Restart
-systemctl --user start pomodoro-lock.service
-systemctl --user stop pomodoro-lock.service
-systemctl --user restart pomodoro-lock.service
+make start
+make stop
+make restart
 
 # Check status and logs
-systemctl --user status pomodoro-lock.service
-journalctl --user -u pomodoro-lock.service -f
+make status
+make logs
 ```
 
 ### System Service
@@ -201,19 +212,19 @@ journalctl --user -u pomodoro-lock.service -f
 systemctl status pomodoro-lock@$USER.service
 
 # Add service for a user
-sudo ./scripts/manage-users.sh add username
+make add-user USER=username
 
 # Remove service for a user
-sudo ./scripts/manage-users.sh remove username
+make remove-user USER=username
 
 # List all users with service
-sudo ./scripts/manage-users.sh list
+make list-users
 
 # Manage service for specific user
-sudo ./scripts/manage-users.sh start username
-sudo ./scripts/manage-users.sh stop username
-sudo ./scripts/manage-users.sh restart username
-sudo ./scripts/manage-users.sh logs username
+make user-start USER=username
+make user-stop USER=username
+make user-restart USER=username
+make user-logs USER=username
 ```
 
 ## Packaging
@@ -259,18 +270,34 @@ make start
 ### Available Make Commands
 ```bash
 make help                    # Show all available commands
-make install-desktop         # Install as user service
+make install                 # Install as user service (starts automatically)
+make install-and-start       # Install and explicitly start the service
+make install-desktop         # Install as user service (legacy)
 make install-system          # Install as system service
 make configure               # Interactive configuration
+make configure-standard      # Apply standard preset (25/5)
+make configure-long          # Apply long preset (45/15)
+make configure-short         # Apply short preset (15/3)
 make test                    # Run all tests
 make package-pip             # Build Python package
 make package-deb             # Build Debian package
+
+# Service management
+make start                   # Start user service
+make stop                    # Stop user service
+make restart                 # Restart user service
+make status                  # Check user service status
+make logs                    # View user service logs
 
 # System service user management
 make add-user USER=username    # Add service for user
 make remove-user USER=username # Remove service for user
 make list-users               # List all users with service
 make user-status USER=username # Check service status for user
+make user-start USER=username  # Start service for user
+make user-stop USER=username   # Stop service for user
+make user-restart USER=username # Restart service for user
+make user-logs USER=username   # Show logs for user
 ```
 
 ## License
