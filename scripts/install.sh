@@ -1,284 +1,270 @@
 #!/bin/bash
 
-# Pomodoro Lock - Smart Installer
-# Automatically chooses the best installation method for your system
+# Pomodoro Lock Installer - Service-Based Architecture
+# This script installs Pomodoro Lock using the new service/UI separation
 # Copyright © 2024 Vinay Gundala (vg@ivdata.dev)
 
 set -e
 
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then
-    echo "Please do not run as root"
-    exit 1
-fi
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Get current user
+# Get current user info
 CURRENT_USER=$(whoami)
 USER_ID=$(id -u)
 
-echo "🚀 Pomodoro Lock - Smart Installer"
-echo "=================================="
-echo "User: $CURRENT_USER (UID: $USER_ID)"
+echo -e "${BLUE}Pomodoro Lock Installer - Service-Based Architecture${NC}"
+echo "=========================================================="
 echo ""
 
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+    echo -e "${RED}Error: This installer should not be run as root.${NC}"
+    echo "Please run as a regular user."
+    exit 1
+fi
 
-# Function to check if a Python module is available
-python_module_exists() {
-    python3 -c "import $1" >/dev/null 2>&1
-}
+echo -e "${GREEN}Installing for user: $CURRENT_USER${NC}"
+echo ""
 
-# Check what's available on the system
-echo "🔍 Analyzing system capabilities..."
-
-VENV_AVAILABLE=false
-PIP_AVAILABLE=false
+# Check system dependencies
+echo -e "${BLUE}Checking system dependencies...${NC}"
 EXISTING_COUNT=0
+
+# Check Python 3
+if command -v python3 >/dev/null 2>&1; then
+    echo -e "${GREEN}✅ Python 3: Available ($(python3 --version))${NC}"
+    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
+else
+    echo -e "${RED}❌ Python 3: Not found${NC}"
+    echo "Please install Python 3: sudo apt-get install python3"
+    exit 1
+fi
+
+# Check GTK
+if python3 -c "import gi; gi.require_version('Gtk', '3.0'); from gi.repository import Gtk" 2>/dev/null; then
+    echo -e "${GREEN}✅ GTK: Available${NC}"
+    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
+else
+    echo -e "${RED}❌ GTK: Not found${NC}"
+    echo "Please install GTK: sudo apt-get install python3-gi"
+    exit 1
+fi
+
+# Check psutil
+if python3 -c "import psutil" 2>/dev/null; then
+    echo -e "${GREEN}✅ psutil: Available${NC}"
+    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
+else
+    echo -e "${YELLOW}⚠️  psutil: Not found (will install in venv)${NC}"
+fi
+
+# Check notify2
+if python3 -c "import notify2" 2>/dev/null; then
+    echo -e "${GREEN}✅ notify2: Available${NC}"
+    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
+else
+    echo -e "${YELLOW}⚠️  notify2: Not found (will install in venv)${NC}"
+fi
+
+# Check python-xlib
+if python3 -c "import Xlib" 2>/dev/null; then
+    echo -e "${GREEN}✅ python-xlib: Available${NC}"
+    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
+else
+    echo -e "${YELLOW}⚠️  python-xlib: Not found (will install in venv)${NC}"
+fi
 
 # Check virtual environment support
 if python3 -m venv --help >/dev/null 2>&1; then
     VENV_AVAILABLE=true
-    echo "✅ Virtual environment support available"
+    echo -e "${GREEN}✅ python3-venv: Available${NC}"
 else
-    echo "❌ Virtual environment support not available"
-fi
-
-# Check pip availability
-if python3 -m pip --version >/dev/null 2>&1; then
-    PIP_AVAILABLE=true
-    echo "✅ pip available"
-elif command_exists pip3; then
-    PIP_AVAILABLE=true
-    echo "✅ pip3 available"
-else
-    echo "❌ pip not available"
-fi
-
-# Check existing packages
-echo ""
-echo "📦 Checking existing packages..."
-if python_module_exists gi; then
-    echo "✅ PyGObject (gi): Available"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo "❌ PyGObject (gi): Not found"
-fi
-
-if python_module_exists psutil; then
-    echo "✅ psutil: Available"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo "❌ psutil: Not found"
-fi
-
-if python_module_exists Xlib; then
-    echo "✅ python-xlib: Available"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo "❌ python-xlib: Not found"
-fi
-
-if python_module_exists notify2; then
-    echo "✅ notify2: Available"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo "❌ notify2: Not found"
-fi
-
-# Determine installation strategy
-echo ""
-echo "🎯 Installation Strategy:"
-
-if [ $EXISTING_COUNT -eq 4 ]; then
-    echo "✅ All packages available - proceeding with direct installation"
-    INSTALL_STRATEGY="existing"
-elif [ "$VENV_AVAILABLE" = true ]; then
-    echo "✅ Using virtual environment (recommended for isolation)"
-    INSTALL_STRATEGY="venv"
-elif [ "$PIP_AVAILABLE" = true ]; then
-    echo "⚠️  Using pip (may require --break-system-packages)"
-    INSTALL_STRATEGY="pip"
-else
-    echo "❌ No suitable installation method found"
-    echo ""
-    echo "Your system doesn't have the necessary tools to install Python packages."
-    echo "Please contact your system administrator to install:"
-    echo "  sudo apt-get install python3-pip python3-venv"
-    echo ""
-    echo "Or try the robust installer:"
-    echo "  make install-user-robust"
-    echo ""
+    VENV_AVAILABLE=false
+    echo -e "${RED}❌ python3-venv: Not found${NC}"
+    echo "Please install: sudo apt-get install python3-venv"
     exit 1
 fi
 
 # Create necessary directories
 echo ""
-echo "📁 Creating directories..."
-mkdir -p ~/.local/share/pomodoro-lock/{bin,config,scripts}
+echo -e "${BLUE}📁 Creating directories...${NC}"
+mkdir -p ~/.local/share/pomodoro-lock/{config,scripts}
 mkdir -p ~/.local/bin
 
-# Install dependencies based on strategy
-case $INSTALL_STRATEGY in
-    "venv")
-        echo ""
-        echo "🐍 Creating virtual environment..."
-        python3 -m venv ~/.local/share/pomodoro-lock/venv
-        
-        echo "📦 Installing packages in virtual environment..."
-        source ~/.local/share/pomodoro-lock/venv/bin/activate
-        pip install psutil python-xlib notify2 PyGObject
-        
-        # Create convenience scripts
-        echo "🔧 Creating convenience scripts..."
-        cat > ~/.local/bin/pomodoro-lock << 'EOF'
-#!/bin/bash
+# Create virtual environment
+echo ""
+echo -e "${BLUE}🐍 Creating virtual environment...${NC}"
+python3 -m venv ~/.local/share/pomodoro-lock/venv
+
+echo -e "${BLUE}📦 Installing packages in virtual environment...${NC}"
 source ~/.local/share/pomodoro-lock/venv/bin/activate
-exec python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py "$@"
-EOF
+pip install --upgrade pip
+pip install psutil python-xlib
 
-        cat > ~/.local/bin/pomodoro-configure << 'EOF'
-#!/bin/bash
-source ~/.local/share/pomodoro-lock/venv/bin/activate
-exec python3 ~/.local/share/pomodoro-lock/configure-pomodoro.py "$@"
-EOF
+# Copy system GTK bindings to virtual environment if needed
+VENV_SITE_PACKAGES="$HOME/.local/share/pomodoro-lock/venv/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages"
 
-        chmod +x ~/.local/bin/pomodoro-lock
-        chmod +x ~/.local/bin/pomodoro-configure
-        
-        # Update start script to use venv
-        echo "📝 Updating start script..."
-        sed -i '1a source ~/.local/share/pomodoro-lock/venv/bin/activate' ~/.local/share/pomodoro-lock/start-pomodoro.sh
-        ;;
-        
-    "pip")
-        echo ""
-        echo "📦 Installing packages via pip..."
-        if python3 -m pip --version >/dev/null 2>&1; then
-            python3 -m pip install --user --break-system-packages psutil python-xlib notify2 PyGObject
-        else
-            pip3 install --user --break-system-packages psutil python-xlib notify2 PyGObject
-        fi
-        
-        # Create convenience scripts
-        echo "🔧 Creating convenience scripts..."
-        cat > ~/.local/bin/pomodoro-lock << 'EOF'
-#!/bin/bash
-exec python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py "$@"
-EOF
+# Copy gi module from dist-packages if it exists
+SYSTEM_GI_PATH="/usr/lib/python3/dist-packages/gi"
+if [ -d "$SYSTEM_GI_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/gi" ]; then
+    echo -e "${BLUE}📋 Copying GTK bindings to virtual environment...${NC}"
+    cp -r "$SYSTEM_GI_PATH" "$VENV_SITE_PACKAGES/"
+    # Also copy any .so files that gi depends on
+    if [ -f "$SYSTEM_GI_PATH/_gi.so" ]; then
+        cp "$SYSTEM_GI_PATH/_gi.so" "$VENV_SITE_PACKAGES/gi/"
+    fi
+    if [ -f "$SYSTEM_GI_PATH/_gi_cairo.so" ]; then
+        cp "$SYSTEM_GI_PATH/_gi_cairo.so" "$VENV_SITE_PACKAGES/gi/"
+    fi
+fi
 
-        cat > ~/.local/bin/pomodoro-configure << 'EOF'
-#!/bin/bash
-exec python3 ~/.local/share/pomodoro-lock/configure-pomodoro.py "$@"
-EOF
-
-        chmod +x ~/.local/bin/pomodoro-lock
-        chmod +x ~/.local/bin/pomodoro-configure
-        ;;
-        
-    "existing")
-        echo ""
-        echo "✅ All packages already available, skipping dependency installation"
-        
-        # Create convenience scripts
-        echo "🔧 Creating convenience scripts..."
-        cat > ~/.local/bin/pomodoro-lock << 'EOF'
-#!/bin/bash
-exec python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py "$@"
-EOF
-
-        cat > ~/.local/bin/pomodoro-configure << 'EOF'
-#!/bin/bash
-exec python3 ~/.local/share/pomodoro-lock/configure-pomodoro.py "$@"
-EOF
-
-        chmod +x ~/.local/bin/pomodoro-lock
-        chmod +x ~/.local/bin/pomodoro-configure
-        ;;
-esac
+# Copy notify2 module from dist-packages if it exists
+SYSTEM_NOTIFY2_PATH="/usr/lib/python3/dist-packages/notify2"
+if [ -d "$SYSTEM_NOTIFY2_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/notify2" ]; then
+    echo -e "${BLUE}📋 Copying notify2 to virtual environment...${NC}"
+    cp -r "$SYSTEM_NOTIFY2_PATH" "$VENV_SITE_PACKAGES/"
+fi
 
 # Copy application files
 echo ""
-echo "📋 Installing application files..."
-cp src/pomodoro-lock.py ~/.local/share/pomodoro-lock/bin/
-chmod +x ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
-
-cp scripts/start-pomodoro.sh ~/.local/share/pomodoro-lock/
-chmod +x ~/.local/share/pomodoro-lock/start-pomodoro.sh
+echo -e "${BLUE}📋 Installing application files...${NC}"
+cp src/pomodoro-service.py ~/.local/share/pomodoro-lock/
+cp src/pomodoro-ui.py ~/.local/share/pomodoro-lock/
+cp src/pomodoro-lock.py ~/.local/share/pomodoro-lock/  # Keep for reference
 
 if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
-    echo "📄 Creating default configuration..."
+    echo -e "${BLUE}📄 Creating default configuration...${NC}"
     cp config/config.json ~/.local/share/pomodoro-lock/config/
 fi
 
 cp scripts/configure-pomodoro.py ~/.local/share/pomodoro-lock/
 chmod +x ~/.local/share/pomodoro-lock/configure-pomodoro.py
 
-# Choose service file based on environment
+# Create launcher scripts
+echo -e "${BLUE}🔧 Creating launcher scripts...${NC}"
+cat > ~/.local/bin/pomodoro-lock << 'EOF'
+#!/bin/bash
+# Pomodoro Lock Launcher
+source ~/.local/share/pomodoro-lock/venv/bin/activate
+cd ~/.local/share/pomodoro-lock
+
+case "${1:-ui}" in
+    "service"|"start")
+        echo "Starting Pomodoro Lock service..."
+        exec python3 pomodoro-service.py
+        ;;
+    "ui")
+        echo "Starting Pomodoro Lock UI..."
+        exec python3 pomodoro-ui.py
+        ;;
+    "stop")
+        echo "Stopping Pomodoro Lock service..."
+        systemctl --user stop pomodoro-lock.service
+        ;;
+    "status")
+        echo "Service status:"
+        systemctl --user status pomodoro-lock.service
+        ;;
+    "help"|"-h"|"--help")
+        echo "Pomodoro Lock Launcher"
+        echo "====================="
+        echo ""
+        echo "Usage: $0 [command]"
+        echo ""
+        echo "Commands:"
+        echo "  ui      - Start UI client (default)"
+        echo "  service - Start the service"
+        echo "  start   - Alias for service"
+        echo "  stop    - Stop the service"
+        echo "  status  - Show service status"
+        echo "  help    - Show this help"
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Use '$0 help' for usage information."
+        exit 1
+        ;;
+esac
+EOF
+
+cat > ~/.local/bin/pomodoro-configure << 'EOF'
+#!/bin/bash
+source ~/.local/share/pomodoro-lock/venv/bin/activate
+cd ~/.local/share/pomodoro-lock
+exec python3 configure-pomodoro.py "$@"
+EOF
+
+chmod +x ~/.local/bin/pomodoro-lock
+chmod +x ~/.local/bin/pomodoro-configure
+
+# Install desktop file for application menu
 echo ""
-echo "🔧 Installing systemd service..."
+echo -e "${BLUE}🔧 Installing application launcher...${NC}"
+mkdir -p ~/.local/share/applications/
+cp debian/pomodoro-lock.desktop ~/.local/share/applications/pomodoro-lock.desktop
+# Update Exec to point to the user's local bin
+sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/pomodoro-lock ui|" ~/.local/share/applications/pomodoro-lock.desktop
+# Update Icon to be an absolute path
+sed -i "s|^Icon=.*|Icon=$PWD/pomodoro-lock.svg|" ~/.local/share/applications/pomodoro-lock.desktop
+
+# Setup systemd service
+echo ""
+echo -e "${BLUE}🔧 Installing systemd service...${NC}"
 mkdir -p ~/.config/systemd/user/
 
-if [ -n "$XDG_CURRENT_DESKTOP" ]; then
-    echo "Desktop environment: $XDG_CURRENT_DESKTOP"
-    SERVICE_FILE="config/pomodoro-lock.service"
-else
-    echo "No specific desktop environment detected, using simple service"
-    SERVICE_FILE="config/pomodoro-lock-simple.service"
-fi
-
-cp "$SERVICE_FILE" ~/.config/systemd/user/pomodoro-lock.service
-
-# Update service file paths
-sed -i "s/User=vinay/User=$CURRENT_USER/g" ~/.config/systemd/user/pomodoro-lock.service
-sed -i "s|/home/vinay|/home/$CURRENT_USER|g" ~/.config/systemd/user/pomodoro-lock.service
-sed -i "s|/run/user/1000|/run/user/$USER_ID|g" ~/.config/systemd/user/pomodoro-lock.service
+# Copy the service template and replace %h with the actual home directory
+cp config/pomodoro-lock.service ~/.config/systemd/user/pomodoro-lock.service
+sed -i "s|%h|$HOME|g" ~/.config/systemd/user/pomodoro-lock.service
 
 # Enable and start service
 systemctl --user daemon-reload
 systemctl --user enable pomodoro-lock.service
 
 echo ""
-echo "🚀 Starting service..."
+echo -e "${BLUE}🚀 Starting service...${NC}"
 systemctl --user start pomodoro-lock.service
+
+# Launch UI in the background
+echo -e "${BLUE}🚀 Launching UI...${NC}"
+if [ -f "$HOME/.local/bin/pomodoro-lock" ]; then
+    nohup "$HOME/.local/bin/pomodoro-lock" ui >/dev/null 2>&1 &
+fi
 
 # Final output
 echo ""
-echo "🎉 Installation Complete!"
+echo -e "${GREEN}🎉 Installation Complete!${NC}"
 echo "========================"
 echo ""
-echo "✅ Pomodoro Lock has been installed successfully!"
+echo -e "${GREEN}✅ Pomodoro Lock has been installed successfully!${NC}"
 echo ""
-echo "📋 Service Management:"
+echo -e "${BLUE}📋 Service Management:${NC}"
 echo "  Start:   systemctl --user start pomodoro-lock.service"
 echo "  Stop:    systemctl --user stop pomodoro-lock.service"
 echo "  Status:  systemctl --user status pomodoro-lock.service"
 echo "  Logs:    journalctl --user -u pomodoro-lock.service -f"
 echo ""
-echo "🔧 Convenience Commands:"
-echo "  Run:     pomodoro-lock"
+echo -e "${BLUE}🔧 Convenience Commands:${NC}"
+echo "  UI:      pomodoro-lock ui"
+echo "  Service: pomodoro-lock service"
 echo "  Config:  pomodoro-configure"
 echo ""
-echo "📁 Files:"
+echo -e "${BLUE}📁 Files:${NC}"
 echo "  Config:  ~/.local/share/pomodoro-lock/config/config.json"
-echo "  Logs:    ~/.local/share/pomodoro-lock/pomodoro.log"
-
-if [ "$INSTALL_STRATEGY" = "venv" ]; then
-    echo "  Venv:   ~/.local/share/pomodoro-lock/venv/"
-fi
-
+echo "  Venv:    ~/.local/share/pomodoro-lock/venv/"
 echo ""
-echo "⚠️  Important Notes:"
-if [ "$INSTALL_STRATEGY" = "pip" ]; then
-    echo "  - Packages were installed with --break-system-packages"
-    echo "  - This may conflict with system packages"
-fi
-
+echo -e "${BLUE}🏗️  Architecture:${NC}"
+echo "  - Service: Manages timer, notifications, and overlays"
+echo "  - UI: Lightweight display client that reads from service"
+echo ""
+echo -e "${YELLOW}⚠️  Important Notes:${NC}"
 echo "  - Add ~/.local/bin to your PATH if not already there:"
 echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo ""
-echo "🌐 The service will start automatically on login."
+echo -e "${GREEN}🌐 The service will start automatically on login.${NC}"
 echo ""
-echo "❓ Need help? Check: https://github.com/vgundala/pomodoro-lock#readme" 
+echo -e "${BLUE}❓ Need help? Check: https://github.com/vgundala/pomodoro-lock#readme${NC}" 

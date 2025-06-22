@@ -1,0 +1,2 @@
+#!/bin/bash
+exec python3 ~/.local/share/pomodoro-lock/configure-pomodoro.py "$@"

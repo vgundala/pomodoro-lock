@@ -1,0 +1,9 @@
+48bbdb883fa5faae6e65ae43ac0bd561  usr/bin/pomodoro-configure
+a56eeafb9671b6ba3999d81e843119b9  usr/bin/pomodoro-start
+62f25cf57984b6b8c9b5694f1a7c1206  usr/lib/python3/dist-packages/pomodoro-lock.py
+b8fa85758ea0a7b664410c29cc80e03a  usr/share/applications/pomodoro-lock.desktop
+b5088df394947111f3107e90e7b9c85f  usr/share/doc/pomodoro-lock/CONTRIBUTING.md.gz
+a7657c41e49dc6356cb5ed1cb6419ee6  usr/share/doc/pomodoro-lock/DETAILED.md.gz
+baeb54ce12f7a7a02f2cf5fab7a585f0  usr/share/doc/pomodoro-lock/LICENSE
+a7657c41e49dc6356cb5ed1cb6419ee6  usr/share/doc/pomodoro-lock/README.md.gz
+d3ec104fcd6961c3af9cf647468d8a66  usr/share/doc/pomodoro-lock/changelog.Debian.gz

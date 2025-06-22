@@ -1,0 +1,20 @@
+[Unit]
+Description=Pomodoro Lock Service with Multi-Display Overlay
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/vinay/.Xauthority
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+WorkingDirectory=/home/vinay/.local/share/pomodoro-lock
+ExecStart=/home/vinay/.local/share/pomodoro-lock/start-pomodoro.sh
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target 

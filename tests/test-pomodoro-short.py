@@ -163,10 +163,26 @@ class FullScreenOverlay(Gtk.Window):
         self.message_label.set_markup("<span size='x-large' foreground='white'>Break Time - Screen Locked</span>")
         self.box.pack_start(self.message_label, True, True, 0)
         
+        # Add exit instructions
+        self.exit_label = Gtk.Label()
+        self.exit_label.set_markup("<span size='medium' foreground='yellow'>Press ESC or Ctrl+C to exit test</span>")
+        self.box.pack_start(self.exit_label, True, True, 0)
+        
+        # Connect keyboard events
+        self.connect("key-press-event", self.on_key_press)
+        self.add_events(Gdk.EventMask.KEY_PRESS_MASK)
+        
         self.show_all()
     
+    def on_key_press(self, widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            logging.info("Escape key pressed - exiting test")
+            Gtk.main_quit()
+            return True
+        return False
+    
     def update_timer(self, seconds):
-        minutes, secs = divmod(seconds, 60)
+        minutes, secs = divmod(int(seconds), 60)
         self.timer_label.set_markup(f"<span size='xx-large' weight='bold' foreground='white'>{minutes:02d}:{secs:02d}</span>")
 
 class MultiDisplayOverlay:
@@ -238,6 +254,15 @@ class PomodoroLock:
         self.notification_sent = False
         self.last_activity = time.time()
         
+        # Test control variables
+        self.test_start_time = time.time()
+        self.max_test_duration = 180  # 3 minutes maximum test time
+        self.cycle_count = 0
+        self.max_cycles = 2  # Only run 2 complete cycles for testing
+        
+        # Setup signal handling for Ctrl+C
+        signal.signal(signal.SIGINT, self.signal_handler)
+        
         Notify.init("Pomodoro Lock")
         self.timer = CountdownTimer()
         self.overlay = None
@@ -246,11 +271,12 @@ class PomodoroLock:
         GLib.timeout_add_seconds(1, self.tick)
 
     def load_config(self):
+        # Use minimal times for testing during packaging
         default_config = {
-            "work_time_minutes": 30,
-            "break_time_minutes": 5,
-            "notification_time_minutes": 2,
-            "inactivity_threshold_minutes": 10
+            "work_time_minutes": 1,  # 1 minute work time for quick testing
+            "break_time_minutes": 0.5,  # 30 seconds break time for quick testing
+            "notification_time_minutes": 0.5,  # 30 seconds notification time
+            "inactivity_threshold_minutes": 2  # 2 minutes inactivity threshold
         }
         if os.path.exists(self.config_path):
             with open(self.config_path, 'r') as f:
@@ -308,7 +334,32 @@ class PomodoroLock:
         except Exception as e:
             logging.error(f"Error hiding overlays: {e}")
 
+    def signal_handler(self, signum, frame):
+        """Handle Ctrl+C to exit gracefully"""
+        logging.info("Ctrl+C received - exiting test")
+        self.cleanup_and_exit()
+    
+    def cleanup_and_exit(self):
+        """Clean up and exit the test"""
+        try:
+            if self.overlay:
+                self.overlay.hide_all()
+                self.overlay.destroy_all()
+            if self.timer:
+                self.timer.destroy()
+            logging.info("Test cleanup completed")
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
+        finally:
+            Gtk.main_quit()
+
     def tick(self):
+        # Check if we've exceeded maximum test duration
+        if (time.time() - self.test_start_time) > self.max_test_duration:
+            logging.info(f"Maximum test duration ({self.max_test_duration}s) reached - exiting")
+            self.cleanup_and_exit()
+            return False
+        
         if self.state == 'work':
             if self.check_user_activity():
                 self.remaining -= 1
@@ -340,6 +391,13 @@ class PomodoroLock:
                 self.remaining = self.work_time
                 self.notification_sent = False
                 self.timer.update_timer(self.remaining, mode='work')
+                
+                # Increment cycle count and check if we should exit
+                self.cycle_count += 1
+                if self.cycle_count >= self.max_cycles:
+                    logging.info(f"Completed {self.max_cycles} cycles - exiting test")
+                    self.cleanup_and_exit()
+                    return False
         return True
 
 def main():

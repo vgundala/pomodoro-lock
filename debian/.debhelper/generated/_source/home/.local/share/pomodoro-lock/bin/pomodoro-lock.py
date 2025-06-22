@@ -368,7 +368,6 @@ class PomodoroLock:
         
         Notify.init("Pomodoro Lock")
         self.timer = CountdownTimer()
-        self.timer.connect("destroy", Gtk.main_quit)
         self.overlay = None
         self.timer.update_timer(self.remaining, mode='work')
         self.timer.show_all()

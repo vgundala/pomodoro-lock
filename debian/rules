@@ -4,27 +4,47 @@
 %:
 	dh $@ --with python3
 
+override_dh_auto_test:
+	# Skip tests during Debian packaging - GUI tests don't work in build environments
+	@echo "Skipping tests during Debian packaging (GUI tests not suitable for build environment)"
+
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/pomodoro-lock
 	
-	# Install Python package
-	mkdir -p debian/pomodoro-lock/usr/lib/python3/dist-packages/
-	cp -r src/* debian/pomodoro-lock/usr/lib/python3/dist-packages/
+	# Install application files to userspace
+	mkdir -p debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp src/pomodoro-lock.py debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp src/pomodoro-service.py debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp src/pomodoro-ui.py debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r scripts/ debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r config/ debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r tests/ debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r docs/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	
-	# Install scripts
+	# Install launcher script
 	mkdir -p debian/pomodoro-lock/usr/bin/
-	cp scripts/configure-pomodoro.py debian/pomodoro-lock/usr/bin/pomodoro-configure
-	cp scripts/start-pomodoro.sh debian/pomodoro-lock/usr/bin/pomodoro-start
+	cp debian/launcher.sh debian/pomodoro-lock/usr/bin/pomodoro-lock
+	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-lock
+	
+	# Install service manager script
+	cp debian/service-manager.sh debian/pomodoro-lock/usr/bin/pomodoro-service
+	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-service
+	
+	# Install configuration script
+	cp debian/configure.sh debian/pomodoro-lock/usr/bin/pomodoro-configure
 	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-configure
-	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-start
 	
-	# Install configuration files
-	mkdir -p debian/pomodoro-lock/etc/pomodoro-lock/
-	cp config/config.json debian/pomodoro-lock/etc/pomodoro-lock/
+	# Install systemd user service file
+	mkdir -p debian/pomodoro-lock/usr/share/pomodoro-lock/systemd/
+	cp config/pomodoro-lock.service debian/pomodoro-lock/usr/share/pomodoro-lock/systemd/
 	
-	# Install systemd service files
-	mkdir -p debian/pomodoro-lock/etc/systemd/user/
-	cp config/pomodoro-lock.service debian/pomodoro-lock/etc/systemd/user/
+	# Install icon
+	mkdir -p debian/pomodoro-lock/usr/share/icons/hicolor/scalable/apps/
+	cp debian/pomodoro-lock.svg debian/pomodoro-lock/usr/share/icons/hicolor/scalable/apps/
+	
+	# Install desktop file
+	mkdir -p debian/pomodoro-lock/usr/share/applications/
+	cp debian/pomodoro-lock.desktop debian/pomodoro-lock/usr/share/applications/
 	
 	# Install documentation
 	mkdir -p debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
@@ -32,15 +52,12 @@ override_dh_auto_install:
 	cp docs/README.md debian/pomodoro-lock/usr/share/doc/pomodoro-lock/DETAILED.md
 	cp LICENSE debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
 	cp CONTRIBUTING.md debian/pomodoro-lock/usr/share/doc/pomodoro-lock/
-	
-	# Install desktop file
-	mkdir -p debian/pomodoro-lock/usr/share/applications/
-	cp debian/pomodoro-lock.desktop debian/pomodoro-lock/usr/share/applications/
 
 override_dh_fixperms:
 	dh_fixperms
+	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-lock
+	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-service
 	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-configure
-	chmod 755 debian/pomodoro-lock/usr/bin/pomodoro-start
 
 override_dh_installdocs:
 	dh_installdocs README.md docs/README.md LICENSE CONTRIBUTING.md 

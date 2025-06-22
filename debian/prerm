@@ -1,0 +1,35 @@
+#!/bin/bash
+# Pre-removal script for pomodoro-lock
+
+set -e
+
+case "$1" in
+    remove|purge)
+        echo "Pomodoro Lock - Pre-removal cleanup"
+        echo "=================================="
+        echo ""
+        echo "Note: User data in ~/.local/share/pomodoro-lock will be preserved."
+        echo "To completely remove all data, manually delete:"
+        echo "  ~/.local/share/pomodoro-lock/"
+        echo "  ~/.config/systemd/user/pomodoro-lock.service"
+        echo ""
+        
+        # Stop and disable the service if it exists
+        if systemctl --user list-unit-files | grep -q pomodoro-lock.service; then
+            echo "Stopping and disabling systemd service..."
+            systemctl --user stop pomodoro-lock.service 2>/dev/null || true
+            systemctl --user disable pomodoro-lock.service 2>/dev/null || true
+            systemctl --user daemon-reload
+        fi
+        ;;
+    upgrade)
+        ;;
+    failed-upgrade)
+        ;;
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+exit 0 

@@ -20,20 +20,12 @@ make check-deps
 # Smart installer (auto-selects best method)
 make install
 
-# Or install using virtual environment (only if venv is already available)
-make install-user-venv
-
-# Or install using robust installation (fallback for tricky systems)
-make install-user-robust
-
 # Or install using desktop installer (legacy/desktop integration)
 make install-desktop
 
 # Or install without auto-start
 make install-and-start
 ```
-
-**Note:** Some installation methods may require admin access to install system dependencies. If you don't have sudo privileges, contact your system administrator or use `make check-deps` to see what's available on your system.
 
 #### Option 2: System Service (For multiple users)
 ```bash
@@ -44,6 +36,48 @@ cd pomodoro-lock
 # Install as system service (requires sudo)
 make install-system
 ```
+
+#### Option 3: Debian Package
+```bash
+# Clone the repository
+git clone https://github.com/vgundala/pomodoro-lock.git
+cd pomodoro-lock
+
+# Build Debian package
+make package-deb
+
+# Install the package
+sudo dpkg -i ../pomodoro-lock_*.deb
+```
+
+**Note:** Some installation methods may require admin access to install system dependencies. If you don't have sudo privileges, contact your system administrator or use `make check-deps` to see what's available on your system.
+
+### Using the Application
+
+#### Starting the Application
+```bash
+# Start the UI (launches from Applications menu or command line)
+pomodoro-lock
+
+# Or start the service directly
+pomodoro-lock service
+```
+
+#### UI Controls
+- **Timer Window**: Draggable countdown timer in bottom-left corner
+- **Close Button (✕)**: Minimizes the timer to system tray
+- **Power Button (⏻)**: Stops the service and closes the application
+- **System Tray**: Right-click for menu options (Show Timer, Stop Service, Quit)
+
+#### Desktop Environment Compatibility
+- **GNOME/KDE**: Full system tray support with AppIndicator3
+- **XFCE**: Limited system tray support - uses persistent notifications or status window as fallback
+- **Other**: Fallback to status window in top-right corner
+
+#### Multiple Instances
+- Only one UI instance can run at a time
+- If you try to start another instance, you'll see a message: "Pomodoro Lock is already running"
+- Check the system tray for the existing instance
 
 ### Configuration
 ```bash
@@ -112,9 +146,6 @@ pomodoro-lock/
 ├── debian/                       # Debian packaging files
 ├── README.md                     # This file (quick start)
 ├── Makefile                      # Build and development commands
-├── setup.py                      # Python package configuration
-├── requirements.txt              # Python dependencies
-├── PACKAGING.md                  # Packaging guide
 ├── CONTRIBUTING.md               # Contribution guidelines
 └── LICENSE                       # MIT License
 ```
@@ -123,11 +154,14 @@ pomodoro-lock/
 
 - ✅ **Multi-Display Support**: Full-screen overlays on all connected monitors
 - ✅ **Visual Timer**: Draggable countdown timer in bottom-left corner
+- ✅ **System Tray Integration**: Minimize to system tray with status display
+- ✅ **Smart UI Controls**: Close button (✕) to minimize, Power button (⏻) to stop service
+- ✅ **Single Instance**: Prevents multiple UI instances with graceful messaging
 - ✅ **Notifications**: Desktop notifications before break periods
 - ✅ **Configuration**: JSON-based configuration with easy management
 - ✅ **Systemd Service**: Runs as user or system service, starts automatically on login
 - ✅ **Cross-Desktop**: Works with GNOME, KDE, XFCE, and other desktop environments
-- ✅ **Packaging Ready**: Supports both pip and Debian packaging
+- ✅ **Debian Packaging**: Ready for Debian/Ubuntu distribution
 - ✅ **Multi-User Support**: System service can manage multiple users
 
 ## How It Works
@@ -139,6 +173,7 @@ pomodoro-lock/
 ## Future Enhancements
 
 - Re-implement robust user inactivity detection (e.g., using evdev for keyboard/mouse input or other screen activity monitoring methods).
+- Add AppStream metadata support for better Linux desktop integration and app store distribution.
 
 ## Installation Methods
 
@@ -156,12 +191,19 @@ pomodoro-lock/
 - **Service**: `pomodoro-lock@username.service`
 - **Management**: `systemctl` (with sudo)
 
+### Debian Package
+- **Scope**: System-wide installation
+- **Permissions**: System-level
+- **Location**: `/usr/bin/` and `/etc/pomodoro-lock/`
+- **Service**: `pomodoro-lock.service`
+- **Management**: Standard Debian package management
+
 ## Documentation
 
 For detailed documentation, installation instructions, configuration options, and troubleshooting, see:
 - [Detailed Documentation](docs/README.md)
-- [Packaging Guide](PACKAGING.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
+- [Troubleshooting Guide](TROUBLESHOOTING.md)
 
 ## Testing
 
@@ -182,169 +224,3 @@ python3 tests/test-multi-overlay.py
 # Test complete workflow
 python3 tests/test-pomodoro-short.py
 ```
-
-## Configuration
-
-### Quick Configuration
-```bash
-# Interactive configuration
-pomodoro-configure
-
-# Apply presets
-pomodoro-configure standard  # 25/5
-pomodoro-configure long      # 45/15
-pomodoro-configure short     # 15/3
-```
-
-### Manual Configuration
-Edit the configuration file directly:
-```bash
-# User service
-nano ~/.local/share/pomodoro-lock/config/config.json
-
-# System service
-sudo nano /etc/pomodoro-lock/config.json
-```
-
-## Service Management
-
-### User Service
-```bash
-# Start/Stop/Restart
-make start
-make stop
-make restart
-
-# Check status and logs
-make status
-make logs
-```
-
-### System Service
-```bash
-# Check status for current user
-systemctl status pomodoro-lock@$USER.service
-
-# Add service for a user
-make add-user USER=username
-
-# Remove service for a user
-make remove-user USER=username
-
-# List all users with service
-make list-users
-
-# Manage service for specific user
-make user-start USER=username
-make user-stop USER=username
-make user-restart USER=username
-make user-logs USER=username
-```
-
-## Packaging
-
-This project supports multiple packaging formats:
-
-### Python Package (pip)
-```bash
-make package-pip
-pip install dist/pomodoro-lock-1.0.0.tar.gz
-```
-
-### Debian Package (.deb)
-```bash
-make package-deb
-sudo dpkg -i ../pomodoro-lock_1.0.0-1_all.deb
-```
-
-### AppImage
-```bash
-make package-appimage
-# The AppImage can be run directly without installation
-./Pomodoro_Lock-1.0.0-x86_64.AppImage
-```
-
-For detailed packaging information, see [PACKAGING.md](PACKAGING.md).
-
-## Requirements
-
-- Ubuntu/Debian-based system
-- Python 3.6+
-- GTK3 desktop environment
-- User account (not root for user service)
-- **Admin access may be required** for installing system dependencies (python3-venv, python3-gi, etc.)
-
-## Development
-
-### Quick Development Setup
-```bash
-# Install in development mode
-make install-pip
-
-# Run tests
-make test
-
-# Start service
-make start
-```
-
-### Available Make Commands
-```bash
-make help                    # Show all available commands
-make install                 # Install as user service (starts automatically)
-make install-and-start       # Install and explicitly start the service
-make install-desktop         # Install as user service (legacy)
-make install-system          # Install as system service
-make configure               # Interactive configuration
-make configure-standard      # Apply standard preset (25/5)
-make configure-long          # Apply long preset (45/15)
-make configure-short         # Apply short preset (15/3)
-make test                    # Run all tests
-make package-pip             # Build Python package
-make package-deb             # Build Debian package
-
-# Service management
-make start                   # Start user service
-make stop                    # Stop user service
-make restart                 # Restart user service
-make status                  # Check user service status
-make logs                    # View user service logs
-
-# System service user management
-make add-user USER=username    # Add service for user
-make remove-user USER=username # Remove service for user
-make list-users               # List all users with service
-make user-status USER=username # Check service status for user
-make user-start USER=username  # Start service for user
-make user-stop USER=username   # Stop service for user
-make user-restart USER=username # Restart service for user
-make user-logs USER=username   # Show logs for user
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Author
-
-**Vinay Gundala** - [vg@ivdata.dev](mailto:vg@ivdata.dev)
-
-- GitHub: [@vgundala](https://github.com/vgundala)
-- Project: [pomodoro-lock](https://github.com/vgundala/pomodoro-lock)
-
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## Support
-
-If you encounter any issues or have questions:
-
-1. Check the [detailed documentation](docs/README.md)
-2. Review the [troubleshooting section](docs/README.md#troubleshooting)
-3. Run the test scripts to verify functionality
-4. Create an issue on [GitHub](https://github.com/vgundala/pomodoro-lock/issues)
-
----
-
-**Note**: This application uses screen overlays instead of system screen locks for better compatibility across different desktop environments and to ensure the timer remains visible during break periods.

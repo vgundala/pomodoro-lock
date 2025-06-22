@@ -1,0 +1,16 @@
+Package: pomodoro-lock
+Version: 1.0.0-1
+Architecture: all
+Maintainer: Vinay Gundala <vg@ivdata.dev>
+Installed-Size: 68
+Depends: python3:any, python3-gi, python3-psutil, python3-xlib, python3-notify2
+Section: utils
+Priority: optional
+Homepage: https://github.com/vgundala/pomodoro-lock
+Description: Multi-display Pomodoro timer with screen overlay
+ A comprehensive Pomodoro timer application that helps you maintain focus during
+ work sessions and enforces breaks with full-screen overlays across all
+ connected displays.
+ .
+ It runs as a user or system service and is designed to be compatible with
+ most modern desktop environments.
