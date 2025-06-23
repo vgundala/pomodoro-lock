@@ -38,11 +38,15 @@ jobs:
       run: |
         dpkg-buildpackage -b -us -uc
     
+    - name: Move Debian package into workspace
+      run: |
+        mv ../pomodoro-lock_*.deb ./
+
     - name: Upload Debian package artifacts
       uses: actions/upload-artifact@v4
       with:
         name: deb-package
-        path: ../pomodoro-lock_*.deb
+        path: pomodoro-lock_*.deb
         retention-days: 30
 
   release:
