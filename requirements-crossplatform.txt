@@ -1,0 +1,23 @@
+# Cross-platform Pomodoro Lock Dependencies
+# This file includes dependencies for both Linux and Windows
+
+# Core dependencies (both platforms)
+psutil>=5.8.0
+
+# Linux-specific dependencies
+# These will be installed via system packages on Linux
+# python3-gi, python3-notify2, python3-xlib, gir1.2-appindicator3-0.1
+
+# Windows-specific dependencies
+win10toast>=0.9; sys_platform == "win32"
+pystray>=0.19.0; sys_platform == "win32"
+Pillow>=8.0.0; sys_platform == "win32"
+pywin32>=300; sys_platform == "win32"
+
+# Optional: For better Windows GUI
+# tkinter is included with Python on Windows
+
+# Development dependencies (optional)
+# pytest>=6.0.0
+# black>=21.0.0
+# flake8>=3.8.0 
