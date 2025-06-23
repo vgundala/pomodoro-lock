@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 # Import platform abstraction layers
-from platform import (
+from platform_abstraction import (
     NotificationManager,
     SystemTrayManager,
     ScreenManager,

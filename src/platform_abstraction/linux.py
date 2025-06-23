@@ -1,38 +1,55 @@
 """
-Linux-specific platform implementations
+Linux-specific platform implementations for Pomodoro Lock
 """
 
 import os
+import sys
 import json
 import fcntl
 import subprocess
 import logging
+import platform as platform_module
 from pathlib import Path
+
+# Check for Linux
+if platform_module.system().lower() != "linux":
+    raise ImportError("Linux platform module imported on non-Linux system")
+
+# Optional dependencies
+GTK_AVAILABLE = False
+XLIB_AVAILABLE = False
+NOTIFY2_AVAILABLE = False
+APPINDICATOR_AVAILABLE = False
+
+try:
+    import gi
+    gi.require_version('Notify', '0.7')
+    gi.require_version('Gtk', '3.0')
+    gi.require_version('AppIndicator3', '0.1')
+    from gi.repository import Notify, Gtk, GLib, Gdk, AppIndicator3
+    GTK_AVAILABLE = True
+except ImportError:
+    logging.warning("GTK3 not available - GUI features will be disabled")
+
+try:
+    from Xlib import display
+    XLIB_AVAILABLE = True
+except ImportError:
+    logging.warning("python-xlib not available - screen detection will be limited")
 
 try:
     import notify2
     NOTIFY2_AVAILABLE = True
 except ImportError:
-    NOTIFY2_AVAILABLE = False
-    logging.warning("notify2 not available, notifications will be disabled")
+    logging.warning("notify2 not available - notifications will be disabled")
 
 try:
     import gi
-    gi.require_version('Gtk', '3.0')
     gi.require_version('AppIndicator3', '0.1')
-    from gi.repository import Gtk, AppIndicator3
-    GTK_AVAILABLE = True
+    from gi.repository import AppIndicator3
+    APPINDICATOR_AVAILABLE = True
 except ImportError:
-    GTK_AVAILABLE = False
-    logging.warning("GTK not available, GUI features will be disabled")
-
-try:
-    import Xlib
-    from Xlib import display
-    XLIB_AVAILABLE = True
-except ImportError:
-    XLIB_AVAILABLE = False
-    logging.warning("Xlib not available, screen management will be limited")
+    logging.warning("AppIndicator3 not available - system tray will be disabled")
 
 class NotificationManager:
     """Linux notification manager using notify2"""

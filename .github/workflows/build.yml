@@ -77,7 +77,7 @@ jobs:
     
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --windowed --name pomodoro-lock --icon=pomodoro-lock-24.png src/pomodoro-ui-crossplatform.py
+        pyinstaller --onefile --windowed --name pomodoro-lock --icon=pomodoro-lock-24.png --add-data "src/platform_abstraction;platform_abstraction" --add-data "src/gui;gui" src/pomodoro-ui-crossplatform.py
     
     - name: Upload Windows executable artifacts
       uses: actions/upload-artifact@v4

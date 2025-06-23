@@ -4,10 +4,10 @@ Supports both Linux and Windows platforms
 """
 
 import sys
-import platform
+import platform as platform_module
 
 # Detect platform
-SYSTEM = platform.system().lower()
+SYSTEM = platform_module.system().lower()
 
 if SYSTEM == "linux":
     from .linux import (

@@ -1,45 +1,51 @@
 """
-Windows-specific platform implementations
+Windows-specific platform implementations for Pomodoro Lock
 """
 
 import os
-import json
-import subprocess
+import sys
 import logging
-import winreg
+import platform as platform_module
 from pathlib import Path
+
+# Check for Windows
+if platform_module.system().lower() != "windows":
+    raise ImportError("Windows platform module imported on non-Windows system")
+
+# Optional dependencies
+TKINTER_AVAILABLE = True
+WIN32_AVAILABLE = False
+TOAST_AVAILABLE = False
+PYSTRAY_AVAILABLE = False
+
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+except ImportError:
+    TKINTER_AVAILABLE = False
+    logging.warning("Tkinter not available")
+
+try:
+    import win32api
+    import win32con
+    import win32gui
+    import winreg
+    WIN32_AVAILABLE = True
+except ImportError:
+    logging.warning("pywin32 not available - some features will be limited")
 
 try:
     from win10toast import ToastNotifier
     TOAST_AVAILABLE = True
 except ImportError:
-    TOAST_AVAILABLE = False
-    logging.warning("win10toast not available, notifications will be disabled")
+    logging.warning("win10toast not available - notifications will be disabled")
 
 try:
     import pystray
     from PIL import Image
     PYSTRAY_AVAILABLE = True
 except ImportError:
-    PYSTRAY_AVAILABLE = False
-    logging.warning("pystray not available, system tray will be disabled")
-
-try:
-    import tkinter as tk
-    from tkinter import messagebox
-    TKINTER_AVAILABLE = True
-except ImportError:
-    TKINTER_AVAILABLE = False
-    logging.warning("tkinter not available, GUI features will be disabled")
-
-try:
-    import win32gui
-    import win32con
-    import win32api
-    WIN32_AVAILABLE = True
-except ImportError:
-    WIN32_AVAILABLE = False
-    logging.warning("pywin32 not available, some Windows features will be limited")
+    logging.warning("pystray/PIL not available - system tray will be disabled")
 
 class NotificationManager:
     """Windows notification manager using win10toast"""

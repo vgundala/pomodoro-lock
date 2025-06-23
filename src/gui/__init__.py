@@ -3,10 +3,10 @@ Cross-platform GUI abstraction layer for Pomodoro Lock
 """
 
 import sys
-import platform
+import platform as platform_module
 
 # Detect platform
-SYSTEM = platform.system().lower()
+SYSTEM = platform_module.system().lower()
 
 if SYSTEM == "linux":
     from .gtk_ui import (
