@@ -9,7 +9,8 @@ override_dh_auto_test:
 	@echo "Skipping tests during Debian packaging (GUI tests not suitable for build environment)"
 
 override_dh_auto_install:
-	dh_auto_install --destdir=debian/pomodoro-lock
+	# Skip the Makefile install target to avoid root check issues
+	# dh_auto_install --destdir=debian/pomodoro-lock
 	
 	# Install application files to userspace
 	mkdir -p debian/pomodoro-lock/usr/share/pomodoro-lock/
