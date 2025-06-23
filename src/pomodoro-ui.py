@@ -11,6 +11,7 @@ import json
 import signal
 import logging
 import fcntl  # Import for file locking
+import notify2  # Import for desktop notifications
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
@@ -432,6 +433,16 @@ class PomodoroUI:
         self.remaining_seconds = self.config.get('work_time_minutes', 30) * 60
         self.state = 'work'
         self.is_paused = False
+        self.notification_sent = False  # Track if notification was sent
+
+        # Initialize notifications
+        try:
+            notify2.init("Pomodoro Lock")
+            self.notifications_enabled = True
+            logging.info("Notifications initialized successfully")
+        except Exception as e:
+            self.notifications_enabled = False
+            logging.warning(f"Failed to initialize notifications: {e}")
 
         # Attempt to acquire a lock to ensure single instance
         if not self.acquire_lock():
@@ -527,12 +538,24 @@ class PomodoroUI:
         # Update the visual timer display
         self.timer.update_timer(self.remaining_seconds, self.state, self.is_paused)
         
+        # Check for notification during work period
+        if self.state == 'work' and not self.notification_sent:
+            notification_time = self.config.get('notification_time_minutes', 2) * 60
+            if self.remaining_seconds <= notification_time:
+                logging.info(f"Sending break notification (break in {notification_time} seconds)")
+                self.send_notification(
+                    f"Break coming in {notification_time} seconds. "
+                    f"You will be locked out for {self.config.get('break_time_minutes', 5)} minutes."
+                )
+                self.notification_sent = True
+        
         # Check if work period ended and start break overlay
         if self.state == 'work' and self.remaining_seconds <= 0:
             logging.info("Work period ended, starting break overlay")
             self.start_break()
             self.state = 'break'
             self.remaining_seconds = self.config.get('break_time_minutes', 5) * 60
+            self.notification_sent = False  # Reset for next work period
             if self.overlay:
                 self.overlay.update_timer(self.remaining_seconds)
         elif self.state == 'break':
@@ -546,6 +569,7 @@ class PomodoroUI:
                 self.end_break()
                 self.state = 'work'
                 self.remaining_seconds = self.config.get('work_time_minutes', 30) * 60
+                self.notification_sent = False  # Reset for next work period
                 self.timer.update_timer(self.remaining_seconds, self.state, self.is_paused)
         
         return True # Keep the timer running
@@ -571,6 +595,22 @@ class PomodoroUI:
                 return default_config
         else:
             return default_config
+
+    def send_notification(self, message):
+        """Send a desktop notification"""
+        if not self.notifications_enabled:
+            return
+        
+        try:
+            notification = notify2.Notification(
+                "Pomodoro Lock",
+                message,
+                "dialog-information"
+            )
+            notification.show()
+            logging.info(f"Notification sent: {message}")
+        except Exception as e:
+            logging.error(f"Failed to send notification: {e}")
 
     def start_break(self):
         """Start break period with overlay on all displays"""

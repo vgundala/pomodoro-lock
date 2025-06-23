@@ -104,7 +104,7 @@ python3 -m venv ~/.local/share/pomodoro-lock/venv
 echo -e "${BLUE}📦 Installing packages in virtual environment...${NC}"
 source ~/.local/share/pomodoro-lock/venv/bin/activate
 pip install --upgrade pip
-pip install psutil python-xlib
+pip install psutil python-xlib notify2 dbus-python
 
 # Copy system GTK bindings to virtual environment if needed
 VENV_SITE_PACKAGES="$HOME/.local/share/pomodoro-lock/venv/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages"
