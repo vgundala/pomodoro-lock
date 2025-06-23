@@ -1,33 +1,53 @@
-#!/bin/sh
-set -e
-
+#!/bin/bash
 # Post-installation script for pomodoro-lock
 
-# Reload systemd user daemon
-systemctl --user daemon-reload
+set -e
 
-# Create user configuration directory if it doesn't exist
-mkdir -p /home/$SUDO_USER/.local/share/pomodoro-lock/config
+case "$1" in
+    configure)
+        echo "Pomodoro Lock - Standalone UI Installation"
+        echo "=========================================="
+        echo ""
+        echo "The application has been installed to /usr/share/pomodoro-lock"
+        echo "User data will be stored in ~/.local/share/pomodoro-lock"
+        echo ""
+        echo "New Architecture:"
+        echo "  - Standalone UI: Complete timer application with integrated overlays"
+        echo "  - Systemd Service: Manages autostart and process lifecycle"
+        echo ""
+        echo "Available commands:"
+        echo "  pomodoro-lock      - Start UI (default)"
+        echo "  pomodoro-lock ui   - Start UI"
+        echo "  pomodoro-lock service - Start the systemd service"
+        echo "  pomodoro-lock stop - Stop the systemd service"
+        echo "  pomodoro-lock status - Show service status"
+        echo "  pomodoro-configure - Configure the application"
+        echo ""
+        echo "Recommended usage:"
+        echo "  1. Start the UI: pomodoro-lock ui"
+        echo "  2. Or enable autostart: systemctl --user enable pomodoro-lock.service"
+        echo ""
+        echo "The first time you run 'pomodoro-lock', it will:"
+        echo "  1. Create a virtual environment in ~/.local/share/pomodoro-lock/venv"
+        echo "  2. Install Python dependencies (including notification support)"
+        echo "  3. Set up user configuration"
+        echo "  4. Configure systemd user service"
+        echo ""
+        echo "Features:"
+        echo "  - Desktop notifications before break periods"
+        echo "  - Multi-display screen overlays during breaks"
+        echo "  - System tray integration"
+        echo "  - Configurable work/break cycles"
+        echo ""
+        echo "To get started, run: pomodoro-lock"
+        echo ""
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
 
-# Copy default config to user directory if it doesn't exist
-if [ ! -f /home/$SUDO_USER/.local/share/pomodoro-lock/config/config.json ]; then
-    cp /etc/pomodoro-lock/config.json /home/$SUDO_USER/.local/share/pomodoro-lock/config/
-    chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.local/share/pomodoro-lock/config/config.json
-fi
-
-# Copy service file to user directory
-mkdir -p /home/$SUDO_USER/.config/systemd/user/
-cp /etc/systemd/user/pomodoro-lock.service /home/$SUDO_USER/.config/systemd/user/
-chown $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.config/systemd/user/pomodoro-lock.service
-
-# Reload systemd user daemon again
-systemctl --user daemon-reload
-
-echo "Pomodoro Lock has been installed successfully!"
-echo ""
-echo "To get started:"
-echo "1. Configure the application: pomodoro-configure"
-echo "2. Start the service: systemctl --user start pomodoro-lock.service"
-echo "3. Enable auto-start: systemctl --user enable pomodoro-lock.service"
-echo ""
-echo "For more information, see: /usr/share/doc/pomodoro-lock/README.md" 
+exit 0 

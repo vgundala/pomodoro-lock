@@ -23,7 +23,7 @@ echo "Display is ready!"
 sleep 5
 
 # Check if the script exists
-SCRIPT_PATH="/home/$CURRENT_USER/.local/share/pomodoro-lock/bin/pomodoro-lock.py"
+SCRIPT_PATH="/home/$CURRENT_USER/.local/share/pomodoro-lock/pomodoro-ui.py"
 if [ ! -f "$SCRIPT_PATH" ]; then
     echo "Error: Pomodoro script not found at $SCRIPT_PATH"
     exit 1
@@ -84,4 +84,4 @@ export GDK_DPI_SCALE=1
 cd "/home/$CURRENT_USER/.local/share/pomodoro-lock"
 
 echo "Starting Pomodoro Lock service..."
-exec python3 "$SCRIPT_PATH" 
+exec venv/bin/python3 "$SCRIPT_PATH" 

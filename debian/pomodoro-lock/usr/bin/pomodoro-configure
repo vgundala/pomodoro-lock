@@ -1,176 +1,147 @@
-#! /usr/bin/python3
+#!/bin/bash
+# Pomodoro Lock Configuration Script - Userspace Installation
 
-import json
-import os
-import sys
+set -e
 
-def load_config():
-    """Load the current configuration"""
-    config_path = os.path.expanduser('~/.local/share/pomodoro-lock/config/config.json')
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as f:
-            return json.load(f)
-    else:
-        return {
-            "work_time_minutes": 30,
-            "break_time_minutes": 5,
-            "notification_time_minutes": 2,
-            "inactivity_threshold_minutes": 10
-        }
+# Get the installation directory
+INSTALL_DIR="/usr/share/pomodoro-lock"
+USER_DIR="$HOME/.local/share/pomodoro-lock"
+CONFIG_FILE="$USER_DIR/config/config.json"
 
-def save_config(config):
-    """Save the configuration to file"""
-    config_path = os.path.expanduser('~/.local/share/pomodoro-lock/config/config.json')
-    os.makedirs(os.path.dirname(config_path), exist_ok=True)
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=4)
-    print(f"Configuration saved to: {config_path}")
+# Function to show current configuration
+show_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        echo "Current configuration:"
+        cat "$CONFIG_FILE" | python3 -m json.tool
+    else
+        echo "No configuration file found. Run the application first to create one."
+    fi
+}
 
-def display_current_config(config):
-    """Display the current configuration"""
-    print("\nCurrent Configuration:")
-    print("=" * 40)
-    print(f"Work Time:           {config['work_time_minutes']} minutes")
-    print(f"Break Time:          {config['break_time_minutes']} minutes")
-    print(f"Notification Time:   {config['notification_time_minutes']} minutes before break")
-    print(f"Inactivity Threshold: {config['inactivity_threshold_minutes']} minutes")
-    print("=" * 40)
+# Function to apply preset configuration
+apply_preset() {
+    local preset="$1"
+    local work_time
+    local break_time
+    
+    case "$preset" in
+        "standard")
+            work_time=25
+            break_time=5
+            echo "Applying standard preset (25/5)..."
+            ;;
+        "long")
+            work_time=45
+            break_time=15
+            echo "Applying long preset (45/15)..."
+            ;;
+        "short")
+            work_time=15
+            break_time=3
+            echo "Applying short preset (15/3)..."
+            ;;
+        *)
+            echo "Unknown preset: $preset"
+            echo "Available presets: standard, long, short"
+            exit 1
+            ;;
+    esac
+    
+    # Create config directory if it doesn't exist
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    
+    # Create configuration file
+    cat > "$CONFIG_FILE" << EOF
+{
+    "work_time_minutes": $work_time,
+    "break_time_minutes": $break_time,
+    "notification_time_minutes": 2,
+    "inactivity_threshold_minutes": 10
+}
+EOF
+    
+    echo "Configuration updated successfully."
+}
 
-def get_user_input(prompt, current_value, min_value=1, max_value=120):
-    """Get user input with validation"""
-    while True:
-        try:
-            value = input(f"{prompt} (current: {current_value}): ").strip()
-            if not value:  # User pressed Enter, keep current value
-                return current_value
-            
-            value = int(value)
-            if min_value <= value <= max_value:
-                return value
-            else:
-                print(f"Please enter a value between {min_value} and {max_value}")
-        except ValueError:
-            print("Please enter a valid number")
+# Function to interactive configuration
+interactive_config() {
+    echo "Pomodoro Lock Configuration"
+    echo "==========================="
+    echo ""
+    
+    # Get current values or defaults
+    if [ -f "$CONFIG_FILE" ]; then
+        WORK_TIME=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['work_time_minutes'])")
+        BREAK_TIME=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['break_time_minutes'])")
+        NOTIFICATION_TIME=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['notification_time_minutes'])")
+        INACTIVITY_THRESHOLD=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['inactivity_threshold_minutes'])")
+    else
+        WORK_TIME=25
+        BREAK_TIME=5
+        NOTIFICATION_TIME=2
+        INACTIVITY_THRESHOLD=10
+    fi
+    
+    echo "Current settings:"
+    echo "  Work time: ${WORK_TIME} minutes"
+    echo "  Break time: ${BREAK_TIME} minutes"
+    echo "  Notification time: ${NOTIFICATION_TIME} minutes before break"
+    echo "  Inactivity threshold: ${INACTIVITY_THRESHOLD} minutes"
+    echo ""
+    
+    read -p "Work time in minutes [$WORK_TIME]: " new_work_time
+    read -p "Break time in minutes [$BREAK_TIME]: " new_break_time
+    read -p "Notification time in minutes [$NOTIFICATION_TIME]: " new_notification_time
+    read -p "Inactivity threshold in minutes [$INACTIVITY_THRESHOLD]: " new_inactivity_threshold
+    
+    # Use new values or defaults
+    WORK_TIME=${new_work_time:-$WORK_TIME}
+    BREAK_TIME=${new_break_time:-$BREAK_TIME}
+    NOTIFICATION_TIME=${new_notification_time:-$NOTIFICATION_TIME}
+    INACTIVITY_THRESHOLD=${new_inactivity_threshold:-$INACTIVITY_THRESHOLD}
+    
+    # Create config directory if it doesn't exist
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    
+    # Create configuration file
+    cat > "$CONFIG_FILE" << EOF
+{
+    "work_time_minutes": $WORK_TIME,
+    "break_time_minutes": $BREAK_TIME,
+    "notification_time_minutes": $NOTIFICATION_TIME,
+    "inactivity_threshold_minutes": $INACTIVITY_THRESHOLD
+}
+EOF
+    
+    echo ""
+    echo "Configuration saved successfully!"
+    echo "New settings:"
+    echo "  Work time: ${WORK_TIME} minutes"
+    echo "  Break time: ${BREAK_TIME} minutes"
+    echo "  Notification time: ${NOTIFICATION_TIME} minutes before break"
+    echo "  Inactivity threshold: ${INACTIVITY_THRESHOLD} minutes"
+}
 
-def configure_interactive():
-    """Interactive configuration"""
-    config = load_config()
-    
-    print("Pomodoro Lock Configuration")
-    print("=" * 40)
-    display_current_config(config)
-    
-    print("\nEnter new values (press Enter to keep current value):")
-    
-    config['work_time_minutes'] = get_user_input(
-        "Work time (minutes)", 
-        config['work_time_minutes'], 
-        1, 120
-    )
-    
-    config['break_time_minutes'] = get_user_input(
-        "Break time (minutes)", 
-        config['break_time_minutes'], 
-        1, 60
-    )
-    
-    config['notification_time_minutes'] = get_user_input(
-        "Notification time (minutes before break)", 
-        config['notification_time_minutes'], 
-        1, 10
-    )
-    
-    config['inactivity_threshold_minutes'] = get_user_input(
-        "Inactivity threshold (minutes)", 
-        config['inactivity_threshold_minutes'], 
-        1, 60
-    )
-    
-    print("\nNew Configuration:")
-    display_current_config(config)
-    
-    save = input("\nSave this configuration? (y/n): ").lower().strip()
-    if save in ['y', 'yes']:
-        save_config(config)
-        print("Configuration saved successfully!")
-    else:
-        print("Configuration not saved.")
-
-def configure_preset(preset_name):
-    """Configure using preset values"""
-    presets = {
-        'standard': {
-            "work_time_minutes": 25,
-            "break_time_minutes": 5,
-            "notification_time_minutes": 2,
-            "inactivity_threshold_minutes": 10
-        },
-        'long': {
-            "work_time_minutes": 45,
-            "break_time_minutes": 15,
-            "notification_time_minutes": 3,
-            "inactivity_threshold_minutes": 15
-        },
-        'short': {
-            "work_time_minutes": 15,
-            "break_time_minutes": 3,
-            "notification_time_minutes": 1,
-            "inactivity_threshold_minutes": 5
-        },
-        'custom': {
-            "work_time_minutes": 30,
-            "break_time_minutes": 5,
-            "notification_time_minutes": 2,
-            "inactivity_threshold_minutes": 10
-        }
-    }
-    
-    if preset_name not in presets:
-        print(f"Unknown preset: {preset_name}")
-        print("Available presets: standard, long, short, custom")
-        return
-    
-    config = presets[preset_name]
-    print(f"\nApplying {preset_name} preset:")
-    display_current_config(config)
-    
-    save = input("\nSave this configuration? (y/n): ").lower().strip()
-    if save in ['y', 'yes']:
-        save_config(config)
-        print("Configuration saved successfully!")
-    else:
-        print("Configuration not saved.")
-
-def main():
-    if len(sys.argv) > 1:
-        command = sys.argv[1].lower()
-        
-        if command == 'show':
-            config = load_config()
-            display_current_config(config)
-        elif command in ['standard', 'long', 'short', 'custom']:
-            configure_preset(command)
-        elif command == 'help':
-            print("Pomodoro Lock Configuration Tool")
-            print("=" * 40)
-            print("Usage:")
-            print("  python3 configure-pomodoro.py          # Interactive configuration")
-            print("  python3 configure-pomodoro.py show     # Show current configuration")
-            print("  python3 configure-pomodoro.py standard # Apply standard preset (25/5)")
-            print("  python3 configure-pomodoro.py long     # Apply long preset (45/15)")
-            print("  python3 configure-pomodoro.py short    # Apply short preset (15/3)")
-            print("  python3 configure-pomodoro.py custom   # Apply custom preset (30/5)")
-            print("  python3 configure-pomodoro.py help     # Show this help")
-            print("\nPresets:")
-            print("  standard: 25 min work, 5 min break")
-            print("  long:     45 min work, 15 min break")
-            print("  short:    15 min work, 3 min break")
-            print("  custom:   30 min work, 5 min break")
-        else:
-            print(f"Unknown command: {command}")
-            print("Run 'python3 configure-pomodoro.py help' for usage information")
-    else:
-        configure_interactive()
-
-if __name__ == "__main__":
-    main() 
+# Main execution
+case "${1:-interactive}" in
+    "show")
+        show_config
+        ;;
+    "standard"|"long"|"short")
+        apply_preset "$1"
+        ;;
+    "interactive")
+        interactive_config
+        ;;
+    *)
+        echo "Usage: $0 [show|standard|long|short|interactive]"
+        echo ""
+        echo "Commands:"
+        echo "  show        - Show current configuration"
+        echo "  standard    - Apply standard preset (25/5)"
+        echo "  long        - Apply long preset (45/15)"
+        echo "  short       - Apply short preset (15/3)"
+        echo "  interactive - Interactive configuration (default)"
+        exit 1
+        ;;
+esac 

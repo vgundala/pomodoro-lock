@@ -1,0 +1,17 @@
+[Unit]
+Description=Pomodoro Lock UI - Standalone Timer Application
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=%h/.local/share/pomodoro-lock
+ExecStart=%h/.local/share/pomodoro-lock/start-pomodoro.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target 

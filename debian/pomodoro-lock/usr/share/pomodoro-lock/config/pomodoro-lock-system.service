@@ -1,0 +1,32 @@
+[Unit]
+Description=Pomodoro Lock - Multi-Display Timer with Screen Overlay
+Documentation=https://github.com/vgundala/pomodoro-lock
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/%i/.Xauthority
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%i/bus
+ExecStart=/usr/local/bin/pomodoro-lock.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/%i/.local/share/pomodoro-lock
+ReadWritePaths=/home/%i/.config/pomodoro-lock
+
+# Logging
+SyslogIdentifier=pomodoro-lock
+
+[Install]
+WantedBy=graphical-session.target 

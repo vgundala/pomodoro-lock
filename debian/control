@@ -8,7 +8,7 @@ Homepage: https://github.com/vgundala/pomodoro-lock
 
 Package: pomodoro-lock
 Architecture: all
-Depends: ${misc:Depends}, python3, python3-venv, python3-gi, python3-notify2, gir1.2-appindicator3-0.1
+Depends: ${misc:Depends}, python3, python3-venv, python3-gi, python3-notify2, python3-dbus, gir1.2-appindicator3-0.1
 Description: Multi-display Pomodoro timer with screen overlay
  A comprehensive Pomodoro timer application that helps you maintain focus during
  work sessions and enforces breaks with full-screen overlays across all
@@ -16,6 +16,14 @@ Description: Multi-display Pomodoro timer with screen overlay
  .
  This package installs the application in userspace with a virtual environment,
  eliminating the need for system-wide Python package installation.
+ .
+ Features include:
+  - Standalone UI with integrated timer and overlay functionality
+  - Desktop notifications before break periods
+  - Multi-display screen overlays during breaks
+  - System tray integration with AppIndicator3
+  - Configurable work/break cycles
+  - Automatic startup via systemd user service
  .
  It runs as a user service and is designed to be compatible with
  most modern desktop environments. 

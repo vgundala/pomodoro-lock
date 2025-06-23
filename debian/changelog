@@ -1,3 +1,17 @@
+pomodoro-lock (1.2.0-1) unstable; urgency=medium
+
+  * Complete architectural refactor to standalone UI design
+  * Add desktop notification support with notify2 and dbus-python
+  * Remove service/UI split complexity
+  * Integrate screen overlay functionality directly into UI
+  * Add single instance protection with file locking
+  * Update systemd service to use robust startup script
+  * Add comprehensive environment handling for edge cases
+  * Remove redundant code and legacy files
+  * Improve maintainability and user experience
+
+ -- Vinay Gundala <vg@ivdata.dev>  Tue, 19 Dec 2024 00:00:00 +0000
+
 pomodoro-lock (1.0.0-1) unstable; urgency=medium
 
   * Initial release.

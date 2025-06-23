@@ -38,7 +38,7 @@ override_dh_auto_install:
 	
 	# Install icon
 	mkdir -p debian/pomodoro-lock/usr/share/icons/hicolor/scalable/apps/
-	cp debian/pomodoro-lock.svg debian/pomodoro-lock/usr/share/icons/hicolor/scalable/apps/
+	cp pomodoro-lock.svg debian/pomodoro-lock/usr/share/icons/hicolor/scalable/apps/
 	
 	# Install desktop file
 	mkdir -p debian/pomodoro-lock/usr/share/applications/

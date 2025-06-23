@@ -1,12 +1,35 @@
-#!/bin/sh
+#!/bin/bash
+# Pre-removal script for pomodoro-lock
+
 set -e
 
-# Automatically added by dh_python3
-if command -v py3clean >/dev/null 2>&1; then
-	py3clean -p pomodoro-lock 
-else
-	dpkg -L pomodoro-lock | sed -En -e '/^(.*)\/(.+)\.py$/s,,rm "\1/__pycache__/\2".*,e'
-	find /usr/lib/python3/dist-packages/ -type d -name __pycache__ -empty -print0 | xargs --null --no-run-if-empty rmdir
-fi
+case "$1" in
+    remove|purge)
+        echo "Pomodoro Lock - Pre-removal cleanup"
+        echo "=================================="
+        echo ""
+        echo "Note: User data in ~/.local/share/pomodoro-lock will be preserved."
+        echo "To completely remove all data, manually delete:"
+        echo "  ~/.local/share/pomodoro-lock/"
+        echo "  ~/.config/systemd/user/pomodoro-lock.service"
+        echo ""
+        
+        # Stop and disable the service if it exists
+        if systemctl --user list-unit-files | grep -q pomodoro-lock.service; then
+            echo "Stopping and disabling systemd service..."
+            systemctl --user stop pomodoro-lock.service 2>/dev/null || true
+            systemctl --user disable pomodoro-lock.service 2>/dev/null || true
+            systemctl --user daemon-reload
+        fi
+        ;;
+    upgrade)
+        ;;
+    failed-upgrade)
+        ;;
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
 
-# End automatically added section
+exit 0 
