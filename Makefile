@@ -1,4 +1,4 @@
-# Pomodoro Lock Makefile - Service-Based Architecture
+# Pomodoro Lock Makefile - Standalone UI Architecture
 
 .PHONY: help install install-and-start test test-all clean uninstall configure package-deb
 
@@ -21,7 +21,6 @@ help:
 	@echo "  make test-multi       - Test multi-display overlay"
 	@echo "  make test-workflow    - Test complete workflow (1min work, 30sec break)"
 	@echo "  make test-quick       - Quick test for packaging (1 minute 30 seconds overlay test)"
-	@echo "  make test-system-tray - Test system tray functionality"
 	@echo "  make test-compatibility - Test desktop environment compatibility"
 	@echo ""
 	@echo "Configuration:"
@@ -72,7 +71,7 @@ check-deps:
 	@./scripts/check-dependencies.sh
 
 # Testing
-test: test-notification test-overlay test-timer test-multi test-workflow test-system-tray test-compatibility
+test: test-notification test-overlay test-timer test-multi test-workflow test-compatibility
 	@echo "All tests completed!"
 
 test-notification:
@@ -98,10 +97,6 @@ test-workflow:
 test-quick:
 	@echo "Quick test for packaging (1 minute 30 seconds overlay test)..."
 	@python3 tests/test-pomodoro.py
-
-test-system-tray:
-	@echo "Testing system tray functionality..."
-	@python3 test-system-tray.py
 
 test-compatibility:
 	@echo "Testing desktop environment compatibility..."

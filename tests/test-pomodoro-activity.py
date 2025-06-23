@@ -18,7 +18,7 @@ def test_pomodoro_activity():
     # Start the pomodoro application
     print("Starting pomodoro application...")
     process = subprocess.Popen(
-        [sys.executable, 'src/pomodoro-lock.py'],
+        [sys.executable, 'src/pomodoro-ui.py'],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True

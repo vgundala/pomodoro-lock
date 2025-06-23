@@ -89,7 +89,7 @@ pomodoro-lock/
 ├── scripts/                      # Installation and utility scripts
 │   ├── install.sh                # Command line installer
 │   ├── configure-pomodoro.py     # Configuration management
-│   └── start-pomodoro.sh         # Startup script
+│   └── start-pomodoro.sh         # Robust startup script with environment handling
 ├── config/                       # Configuration files
 │   ├── config.json               # Default configuration
 │   └── pomodoro-lock.service     # Systemd service for autostart

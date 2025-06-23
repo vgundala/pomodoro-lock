@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Service Communication**: Removed service/UI communication code
 - **Unused Methods**: Removed `detect_desktop_environment` and `stop_service_and_exit` methods
 - **Unused Imports**: Removed unused `time` import from UI
+- **Legacy Files**: Removed `src/pomodoro-lock.py` (legacy service file)
+- **Redundant Tests**: Removed `test-system-tray.py` and `test-visible-tray.py` from root directory
+- **Build Artifacts**: Removed debian build artifacts and updated .gitignore
 
 ### Fixed
 - **Service Startup Issues**: Resolved problems with service exiting immediately after installation
@@ -57,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Handling**: Improved error handling in installation and startup processes
 - **Service Reliability**: Enhanced service startup reliability across different desktop environments
 - **Code Cleanup**: Removed duplicate overlay classes and redundant functionality
+- **Service Architecture**: Updated service to use startup script for better environment handling and robustness
+- **Virtual Environment**: Service now uses virtual environment python for consistent dependency management
 
 ## [1.1.0] - 2024-12-19
 
@@ -229,22 +234,3 @@ When adding new entries to the changelog, please follow these guidelines:
 
 For more information about this project, see the [README.md](README.md) and [docs/README.md](docs/README.md) files.
 
-## Architecture Diagram
-┌─────────────────────────────────────────────────────────────┐
-│                    Standalone UI                            │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Timer Window  │  │  System Tray    │  │   Overlays  │ │
-│  │  (Draggable)    │  │  (AppIndicator) │  │ (Multi-Display) │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Single Process (pomodoro-ui.py)            │ │
-│  │  • Timer Logic • Notifications • File Locking • Cleanup │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │  Systemd Service │
-                    │  (Autostart)     │
-                    └─────────────────┘ 

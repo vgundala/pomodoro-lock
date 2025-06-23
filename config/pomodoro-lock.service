@@ -8,13 +8,8 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=%h/.Xauthority
-Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%i/bus
-Environment=XDG_RUNTIME_DIR=/run/user/%i
 WorkingDirectory=%h/.local/share/pomodoro-lock
-ExecStartPre=/bin/bash -c 'until xset q >/dev/null 2>&1; do sleep 1; done'
-ExecStart=%h/.local/share/pomodoro-lock/venv/bin/python3 %h/.local/share/pomodoro-lock/pomodoro-ui.py
+ExecStart=%h/.local/share/pomodoro-lock/start-pomodoro.sh
 StandardOutput=journal
 StandardError=journal
 

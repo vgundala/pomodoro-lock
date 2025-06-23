@@ -13,7 +13,6 @@ override_dh_auto_install:
 	
 	# Install application files to userspace
 	mkdir -p debian/pomodoro-lock/usr/share/pomodoro-lock/
-	cp src/pomodoro-lock.py debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp src/pomodoro-ui.py debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r scripts/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r config/ debian/pomodoro-lock/usr/share/pomodoro-lock/

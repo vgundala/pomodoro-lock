@@ -372,9 +372,8 @@ pomodoro-lock/
 │   └── pomodoro-ui.py          # Main application
 ├── scripts/                      # Installation and utility scripts
 │   ├── install.sh                # Command line installer
-│   ├── install-desktop.sh        # Desktop installer
-│   ├── start-pomodoro.sh         # Startup script
-│   └── configure-pomodoro.py     # Configuration management
+│   ├── configure-pomodoro.py     # Configuration management
+│   └── start-pomodoro.sh         # Robust startup script with environment handling
 ├── config/                       # Configuration files
 │   ├── config.json               # Default configuration
 │   ├── pomodoro-lock.service     # Systemd service file

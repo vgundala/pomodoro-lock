@@ -113,7 +113,7 @@ def test_package_structure():
         required_files = [
             'setup.py',
             'requirements.txt',
-            'src/pomodoro-lock.py',
+            'src/pomodoro-ui.py',
             'scripts/install.sh',
             'config/config.json',
             '.github/workflows/build.yml'

@@ -140,6 +140,7 @@ if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
     cp config/config.json ~/.local/share/pomodoro-lock/config/
 fi
 
+chmod +x ~/.local/share/pomodoro-lock/start-pomodoro.sh
 chmod +x ~/.local/share/pomodoro-lock/configure-pomodoro.py
 
 # Create launcher scripts
