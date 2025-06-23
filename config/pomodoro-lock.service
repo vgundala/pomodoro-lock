@@ -1,14 +1,22 @@
 [Unit]
-Description=Pomodoro Lock Service with Multi-Display Overlay
+Description=Pomodoro Lock UI - Standalone Timer Application
 After=graphical-session.target
+Wants=graphical-session.target
 
 [Service]
 Type=simple
 Restart=on-failure
-RestartSec=2
+RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%i/bus
+Environment=XDG_RUNTIME_DIR=/run/user/%i
 WorkingDirectory=%h/.local/share/pomodoro-lock
-ExecStart=%h/.local/share/pomodoro-lock/venv/bin/python3 %h/.local/share/pomodoro-lock/pomodoro-service.py
+ExecStartPre=/bin/bash -c 'until xset q >/dev/null 2>&1; do sleep 1; done'
+ExecStart=%h/.local/share/pomodoro-lock/venv/bin/python3 %h/.local/share/pomodoro-lock/pomodoro-ui.py
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=graphical-session.target 

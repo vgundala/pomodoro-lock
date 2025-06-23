@@ -7,8 +7,8 @@ help:
 	@echo "Pomodoro Lock - Available Commands:"
 	@echo ""
 	@echo "Installation:"
-	@echo "  make install          - Install using new service-based architecture"
-	@echo "  make install-and-start - Install and automatically start the service"
+	@echo "  make install          - Install standalone UI with autostart enabled"
+	@echo "  make install-and-start - Install, enable autostart, and start UI immediately"
 	@echo ""
 	@echo "Dependency Management:"
 	@echo "  make check-deps       - Check system dependencies and provide guidance"
@@ -31,33 +31,40 @@ help:
 	@echo "  make configure-long   - Apply long preset (45/15)"
 	@echo "  make configure-short  - Apply short preset (15/3)"
 	@echo ""
-	@echo "Service Management:"
-	@echo "  make start            - Start the user service"
-	@echo "  make stop             - Stop the user service"
-	@echo "  make restart          - Restart the user service"
-	@echo "  make status           - Check user service status"
-	@echo "  make logs             - View user service logs"
+	@echo "UI Management:"
+	@echo "  make start            - Start the UI"
+	@echo "  make stop             - Stop the UI"
+	@echo "  make restart          - Restart the UI"
+	@echo "  make status           - Check UI status"
+	@echo "  make logs             - View UI logs"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package-deb      - Build Debian package (.deb)"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean            - Clean up temporary files"
-	@echo "  make uninstall        - Uninstall the user service"
+	@echo "  make uninstall        - Uninstall the UI"
 
 # Installation
 install:
-	@echo "Installing Pomodoro Lock (Service-Based Architecture)..."
+	@echo "Installing Pomodoro Lock (Standalone UI Architecture)..."
 	@chmod +x scripts/install.sh
 	@./scripts/install.sh
+	@echo "Enabling autostart service..."
+	@systemctl --user daemon-reload
+	@systemctl --user enable pomodoro-lock.service
+	@echo "Autostart enabled! Pomodoro Lock will start automatically on login."
 
 install-and-start:
-	@echo "Installing Pomodoro Lock (Service-Based Architecture) and starting it..."
+	@echo "Installing Pomodoro Lock (Standalone UI Architecture) and starting it..."
 	@chmod +x scripts/install.sh
 	@./scripts/install.sh
-	@echo "Starting service..."
+	@echo "Enabling autostart service..."
+	@systemctl --user daemon-reload
+	@systemctl --user enable pomodoro-lock.service
+	@echo "Starting UI..."
 	@systemctl --user start pomodoro-lock.service
-	@echo "Service started successfully!"
+	@echo "UI started successfully and autostart enabled!"
 
 check-deps:
 	@echo "Checking Pomodoro Lock dependencies..."
@@ -123,19 +130,19 @@ configure-short:
 
 # Service Management
 start:
-	@echo "Starting Pomodoro Lock service..."
+	@echo "Starting Pomodoro Lock UI..."
 	@systemctl --user start pomodoro-lock.service
 
 stop:
-	@echo "Stopping Pomodoro Lock service..."
+	@echo "Stopping Pomodoro Lock UI..."
 	@systemctl --user stop pomodoro-lock.service
 
 restart:
-	@echo "Restarting Pomodoro Lock service..."
+	@echo "Restarting Pomodoro Lock UI..."
 	@systemctl --user restart pomodoro-lock.service
 
 status:
-	@echo "Service status:"
+	@echo "Pomodoro Lock UI Status:"
 	@systemctl --user status pomodoro-lock.service
 
 logs:

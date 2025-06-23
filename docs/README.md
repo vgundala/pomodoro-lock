@@ -22,14 +22,16 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 ### ✅ Core Functionality
 - **Work-Break Cycle**: Configurable work sessions followed by break periods
 - **Multi-Display Support**: Full-screen overlays on all connected monitors
-- **Visual Timer**: Draggable countdown timer in bottom-left corner
+- **Visual Timer**: Draggable countdown timer with "Pomodoro Lock" title
 - **Notifications**: Desktop notifications before break periods
 - **Configuration**: JSON-based configuration for customizing timers
 
 ### ✅ Technical Features
+- **Standalone UI**: Complete timer application with integrated overlays
 - **Screen Overlay**: Full-screen black overlays with countdown timers
-- **Systemd Service**: Runs as a user service, starts automatically on login
+- **Systemd Autostart**: Runs automatically on login via systemd user service
 - **Cross-Desktop**: Works with GNOME, KDE, XFCE, and other desktop environments
+- **Single Instance Protection**: Prevents multiple UI instances with file locking
 - **Logging**: Comprehensive logging for debugging and monitoring
 - **Security**: Proper user permissions and security settings
 - **Packaging**: Supports both pip and Debian packaging
@@ -37,9 +39,10 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 ## How It Works
 
 ### Work Period (configurable, default: 30 minutes)
-1. Shows a small, draggable timer in the bottom-left corner
+1. Shows a small, draggable timer with "Pomodoro Lock" title
 2. Counts down from work time (configurable)
 3. Sends notification 2 minutes before break
+4. Can be minimized to system tray
 
 ### Break Period (configurable, default: 5 minutes)
 1. Creates full-screen overlays on ALL connected displays
@@ -51,9 +54,19 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 ### Cycle
 - Work → Break → Work → Break → (repeats indefinitely)
 
-## Future Enhancements
+## Architecture
 
-- Re-implement robust user inactivity detection (e.g., using evdev for keyboard/mouse input or other screen activity monitoring methods).
+### Standalone UI Design
+- **Single Process**: UI handles all functionality (timer, overlays, notifications)
+- **Systemd Service**: Manages autostart and process lifecycle
+- **File Locking**: Prevents multiple instances using exclusive file locks
+- **Clean Exit**: Proper cleanup on quit (overlays, lock files, etc.)
+
+### Service Lifecycle
+- **Installation**: `make install` copies files and enables autostart
+- **Autostart**: Service starts automatically on login
+- **Manual Control**: Start/stop via systemctl or make commands
+- **Quit Handling**: UI quits cleanly, service restarts on next login
 
 ## Installation
 
@@ -65,36 +78,19 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 
 ### Quick Installation
 
-#### Option 1: Make-based Installation (Recommended)
 ```bash
 # Clone or download the repository
 git clone https://github.com/vgundala/pomodoro-lock.git
 cd pomodoro-lock
 
-# Install as user service (starts automatically)
+# Check dependencies first (recommended)
+make check-deps
+
+# Install with autostart enabled
 make install
 
-# Or install without auto-start
+# Or install and start immediately
 make install-and-start
-```
-
-#### Option 2: Desktop Installation (Legacy)
-```bash
-# Clone or download the repository
-git clone https://github.com/vgundala/pomodoro-lock.git
-cd pomodoro-lock
-
-# Run the interactive desktop installer
-./scripts/install-desktop.sh
-```
-
-#### Option 3: Command Line Installation (Legacy)
-```bash
-# Clone or download the repository
-cd pomodoro-lock
-
-# Run the command line installer
-./scripts/install.sh
 ```
 
 ### Manual Installation
@@ -112,9 +108,9 @@ cd pomodoro-lock
 
 3. **Copy Files**
    ```bash
-   cp src/pomodoro-lock.py ~/.local/share/pomodoro-lock/bin/
+   cp src/pomodoro-ui.py ~/.local/share/pomodoro-lock/bin/
    cp scripts/start-pomodoro.sh ~/.local/share/pomodoro-lock/
-   chmod +x ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
+   chmod +x ~/.local/share/pomodoro-lock/bin/pomodoro-ui.py
    chmod +x ~/.local/share/pomodoro-lock/start-pomodoro.sh
    ```
 
@@ -197,9 +193,9 @@ You can also edit the configuration file directly:
 nano ~/.local/share/pomodoro-lock/config/config.json
 ```
 
-**Note**: After changing the configuration, restart the service:
+**Note**: After changing the configuration, restart the UI:
 ```bash
-systemctl --user restart pomodoro-lock.service
+make restart
 ```
 
 ## Service Management
@@ -321,7 +317,7 @@ python3 tests/test-pomodoro-short.py
 ~/.local/share/pomodoro-lock/start-pomodoro.sh
 
 # Test the main script directly
-python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
+python3 ~/.local/share/pomodoro-lock/bin/pomodoro-ui.py
 ```
 
 ## Troubleshooting
@@ -364,7 +360,7 @@ To run with verbose logging:
 systemctl --user stop pomodoro-lock.service
 
 # Run manually with debug output
-python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
+python3 ~/.local/share/pomodoro-lock/bin/pomodoro-ui.py
 ```
 
 ## File Structure
@@ -373,7 +369,7 @@ python3 ~/.local/share/pomodoro-lock/bin/pomodoro-lock.py
 ```
 pomodoro-lock/
 ├── src/                          # Source code
-│   └── pomodoro-lock.py          # Main application
+│   └── pomodoro-ui.py          # Main application
 ├── scripts/                      # Installation and utility scripts
 │   ├── install.sh                # Command line installer
 │   ├── install-desktop.sh        # Desktop installer
@@ -406,7 +402,7 @@ pomodoro-lock/
 ```
 ~/.local/share/pomodoro-lock/
 ├── bin/
-│   └── pomodoro-lock.py          # Installed application
+│   └── pomodoro-ui.py          # Installed application
 ├── config/
 │   └── config.json               # Configuration file
 ├── scripts/                      # Additional scripts
@@ -427,10 +423,13 @@ pomodoro-lock/
 - **python3-notify2**: Desktop notifications
 
 ### Architecture
-- **CountdownTimer**: GTK window for work period timer
-- **FullScreenOverlay**: GTK window for break period overlay
-- **MultiDisplayOverlay**: Manages overlays across multiple displays
-- **PomodoroLock**: Main application logic and state management
+- **Standalone UI**: Complete timer application with integrated overlays
+- **Screen Overlay**: Full-screen black overlays with countdown timers
+- **Systemd Autostart**: Runs automatically on login via systemd user service
+- **Cross-Desktop**: Works with GNOME, KDE, XFCE, and other desktop environments
+- **Single Instance Protection**: Prevents multiple UI instances with file locking
+- **Logging**: Comprehensive logging for debugging and monitoring
+- **Security**: Proper user permissions and security settings
 
 ### Security
 - Runs as user service (not system service)

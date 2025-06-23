@@ -17,30 +17,24 @@ def detect_desktop_environment():
     """Detect the current desktop environment"""
     desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
     session = os.environ.get('DESKTOP_SESSION', '').lower()
-    
-    if 'xfce' in desktop or 'xfce' in session:
-        return 'XFCE'
-    elif 'gnome' in desktop or 'gnome' in session:
+    if 'gnome' in desktop or 'ubuntu' in desktop or 'unity' in desktop:
         return 'GNOME'
-    elif 'kde' in desktop or 'kde' in session:
+    elif 'kde' in desktop or 'plasma' in desktop:
         return 'KDE'
-    elif 'mate' in desktop or 'mate' in session:
-        return 'MATE'
-    elif 'cinnamon' in desktop or 'cinnamon' in session:
-        return 'Cinnamon'
-    else:
-        return 'Unknown'
+    # Remove XFCE detection
+    return 'OTHER'
 
 def test_system_tray():
     """Test system tray functionality"""
     desktop = detect_desktop_environment()
     print(f"🔍 Detected Desktop Environment: {desktop}")
     
-    if desktop == 'XFCE':
-        print("✅ XFCE detected - will use fallback mechanisms (notifications + status window)")
-        print("   - System tray icons may not be visible in XFCE")
-        print("   - Notifications and status window will work")
-        return True
+    if desktop == 'GNOME':
+        print("✅ GNOME detected - using AppIndicator3")
+    elif desktop == 'KDE':
+        print("✅ KDE detected - using StatusNotifier")
+    else:
+        print("✅ Other desktop detected - using default system tray implementation")
     
     # Test AppIndicator3 for other environments
     try:
@@ -113,18 +107,12 @@ def main():
     
     print("\n💡 Recommendations:")
     
-    if desktop == 'XFCE':
-        print("   - XFCE detected: Using fallback mechanisms")
-        print("   - Notifications and status window will provide full functionality")
-        print("   - System tray icons may not be visible but are technically working")
-    
-    elif system_tray_works:
-        print("   - System tray should work properly")
-        print("   - Full functionality available")
-    
+    if desktop == 'GNOME':
+        print("   - GNOME detected: Using AppIndicator3")
+    elif desktop == 'KDE':
+        print("   - KDE detected: Using StatusNotifier")
     else:
-        print("   - System tray limited, but fallbacks will work")
-        print("   - Install AppIndicator3: sudo apt-get install libayatana-appindicator3-dev")
+        print("   - Other desktop detected: Using default system tray implementation")
     
     if not notifications_work:
         print("   - Install notification support: sudo apt-get install libnotify-bin")

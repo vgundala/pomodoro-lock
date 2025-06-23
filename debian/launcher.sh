@@ -97,7 +97,7 @@ Environment=XAUTHORITY=\$HOME/.Xauthority
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$(id -u)/bus
 Environment=XDG_RUNTIME_DIR=/run/user/\$(id -u)
 WorkingDirectory=$USER_DIR
-ExecStart=$VENV_DIR/bin/python3 $INSTALL_DIR/pomodoro-service.py
+ExecStart=$VENV_DIR/bin/python3 $INSTALL_DIR/pomodoro-ui.py
 Restart=always
 RestartSec=30
 StandardOutput=journal

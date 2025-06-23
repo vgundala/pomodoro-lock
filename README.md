@@ -1,4 +1,4 @@
-# Pomodoro Lock - Multi-Display Timer with Screen Overlay
+# Pomodoro Lock - Standalone UI Timer with Screen Overlay
 
 A comprehensive Pomodoro timer application that helps you maintain focus during work sessions and enforces breaks with full-screen overlays across all connected displays.
 
@@ -6,9 +6,8 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 
 ## Quick Start
 
-### Installation Options
+### Installation
 
-#### Option 1: User Service (Recommended for single user)
 ```bash
 # Clone the repository
 git clone https://github.com/vgundala/pomodoro-lock.git
@@ -17,40 +16,12 @@ cd pomodoro-lock
 # Check dependencies first (recommended)
 make check-deps
 
-# Smart installer (auto-selects best method)
+# Install with autostart enabled
 make install
 
-# Or install using desktop installer (legacy/desktop integration)
-make install-desktop
-
-# Or install without auto-start
+# Or install and start immediately
 make install-and-start
 ```
-
-#### Option 2: System Service (For multiple users)
-```bash
-# Clone the repository
-git clone https://github.com/vgundala/pomodoro-lock.git
-cd pomodoro-lock
-
-# Install as system service (requires sudo)
-make install-system
-```
-
-#### Option 3: Debian Package
-```bash
-# Clone the repository
-git clone https://github.com/vgundala/pomodoro-lock.git
-cd pomodoro-lock
-
-# Build Debian package
-make package-deb
-
-# Install the package
-sudo dpkg -i ../pomodoro-lock_*.deb
-```
-
-**Note:** Some installation methods may require admin access to install system dependencies. If you don't have sudo privileges, contact your system administrator or use `make check-deps` to see what's available on your system.
 
 ### Using the Application
 
@@ -59,15 +30,15 @@ sudo dpkg -i ../pomodoro-lock_*.deb
 # Start the UI (launches from Applications menu or command line)
 pomodoro-lock
 
-# Or start the service directly
-pomodoro-lock service
+# Or start the UI directly
+pomodoro-lock ui
 ```
 
 #### UI Controls
-- **Timer Window**: Draggable countdown timer in bottom-left corner
+- **Timer Window**: Draggable countdown timer with "Pomodoro Lock" title
 - **Close Button (✕)**: Minimizes the timer to system tray
-- **Power Button (⏻)**: Stops the service and closes the application
-- **System Tray**: Right-click for menu options (Show Timer, Stop Service, Quit)
+- **Power Button (⏻)**: Quits the application
+- **System Tray**: Right-click for menu options (Show Timer, Quit)
 
 #### Desktop Environment Compatibility
 - **GNOME/KDE**: Full system tray support with AppIndicator3
@@ -92,28 +63,21 @@ make configure-short     # 15/3
 
 ### Service Management
 
-#### User Service
 ```bash
-# Start the service
+# Start the UI
 make start
+
+# Stop the UI
+make stop
 
 # Check status
 make status
 
 # View logs
 make logs
-```
 
-#### System Service
-```bash
-# Check status for current user
-systemctl status pomodoro-lock@$USER.service
-
-# Add service for another user
-make add-user USER=username
-
-# List all users with service
-make list-users
+# Restart the UI
+make restart
 ```
 
 ## Project Structure
@@ -121,26 +85,21 @@ make list-users
 ```
 pomodoro-lock/
 ├── src/                          # Source code
-│   └── pomodoro-lock.py          # Main application
+│   └── pomodoro-ui.py            # Standalone UI application
 ├── scripts/                      # Installation and utility scripts
-│   ├── install.sh                # Command line installer (user service)
-│   ├── install-desktop.sh        # Desktop installer (user service)
-│   ├── install-system.sh         # System service installer
-│   ├── manage-users.sh           # User management for system service
-│   ├── start-pomodoro.sh         # Startup script
-│   └── configure-pomodoro.py     # Configuration management
+│   ├── install.sh                # Command line installer
+│   ├── configure-pomodoro.py     # Configuration management
+│   └── start-pomodoro.sh         # Startup script
 ├── config/                       # Configuration files
 │   ├── config.json               # Default configuration
-│   ├── pomodoro-lock.service     # User service file
-│   ├── pomodoro-lock-simple.service # Alternative user service
-│   └── pomodoro-lock-system.service # System service file
+│   └── pomodoro-lock.service     # Systemd service for autostart
 ├── tests/                        # Test scripts
 │   ├── test-notification.py      # Notification tests
 │   ├── test-overlay.py           # Overlay tests
 │   ├── test-timer.py             # Timer tests
 │   ├── test-multi-overlay.py     # Multi-display tests
 │   ├── test-pomodoro-short.py    # Complete workflow tests
-│   └── test-screen-lock.py       # Screen lock tests (legacy)
+│   └── test-system-tray.py       # System tray tests
 ├── docs/                         # Documentation
 │   └── README.md                 # Detailed documentation
 ├── debian/                       # Debian packaging files
@@ -152,17 +111,17 @@ pomodoro-lock/
 
 ## Features
 
+- ✅ **Standalone UI**: Complete timer application with integrated overlays
 - ✅ **Multi-Display Support**: Full-screen overlays on all connected monitors
-- ✅ **Visual Timer**: Draggable countdown timer in bottom-left corner
+- ✅ **Visual Timer**: Draggable countdown timer with "Pomodoro Lock" title
 - ✅ **System Tray Integration**: Minimize to system tray with status display
-- ✅ **Smart UI Controls**: Close button (✕) to minimize, Power button (⏻) to stop service
-- ✅ **Single Instance**: Prevents multiple UI instances with graceful messaging
+- ✅ **Smart UI Controls**: Close button (✕) to minimize, Power button (⏻) to quit
+- ✅ **Single Instance Protection**: Prevents multiple UI instances with graceful messaging
 - ✅ **Notifications**: Desktop notifications before break periods
 - ✅ **Configuration**: JSON-based configuration with easy management
-- ✅ **Systemd Service**: Runs as user or system service, starts automatically on login
+- ✅ **Systemd Autostart**: Runs automatically on login via systemd user service
 - ✅ **Cross-Desktop**: Works with GNOME, KDE, XFCE, and other desktop environments
 - ✅ **Debian Packaging**: Ready for Debian/Ubuntu distribution
-- ✅ **Multi-User Support**: System service can manage multiple users
 
 ## How It Works
 
@@ -170,33 +129,43 @@ pomodoro-lock/
 2. **Break Period**: Creates full-screen overlays on all displays with countdown
 3. **Cycle**: Work → Break → Work → Break → (repeats indefinitely)
 
+## Architecture
+### Architecture Diagram
+┌─────────────────────────────────────────────────────────────┐
+│                    Standalone UI                            │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │   Timer Window  │  │  System Tray    │  │   Overlays  │ │
+│  │  (Draggable)    │  │  (AppIndicator) │  │ (Multi-Display) │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Single Process (pomodoro-ui.py)            │ │
+│  │  • Timer Logic • Notifications • File Locking • Cleanup │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │  Systemd Service │
+                    │  (Autostart)     │
+                    └─────────────────┘ 
+
+### Standalone UI Design
+- **Single Process**: UI handles all functionality (timer, overlays, notifications)
+- **Systemd Service**: Manages autostart and process lifecycle
+- **File Locking**: Prevents multiple instances using exclusive file locks
+- **Clean Exit**: Proper cleanup on quit (overlays, lock files, etc.)
+
+### Service Lifecycle
+- **Installation**: `make install` copies files and enables autostart
+- **Autostart**: Service starts automatically on login
+- **Manual Control**: Start/stop via systemctl or make commands
+- **Quit Handling**: UI quits cleanly, service restarts on next login
+
 ## Future Enhancements
 
 - Re-implement robust user inactivity detection (e.g., using evdev for keyboard/mouse input or other screen activity monitoring methods).
 - Add AppStream metadata support for better Linux desktop integration and app store distribution.
-
-## Installation Methods
-
-### User Service (Default)
-- **Scope**: Single user
-- **Permissions**: User-level
-- **Location**: `~/.local/share/pomodoro-lock/`
-- **Service**: `pomodoro-lock.service`
-- **Management**: `systemctl --user` (for user service)
-
-### System Service (Advanced)
-- **Scope**: Multiple users
-- **Permissions**: System-level (requires sudo)
-- **Location**: `/usr/local/bin/` and `/etc/pomodoro-lock/`
-- **Service**: `pomodoro-lock@username.service`
-- **Management**: `systemctl` (with sudo)
-
-### Debian Package
-- **Scope**: System-wide installation
-- **Permissions**: System-level
-- **Location**: `/usr/bin/` and `/etc/pomodoro-lock/`
-- **Service**: `pomodoro-lock.service`
-- **Management**: Standard Debian package management
 
 ## Documentation
 

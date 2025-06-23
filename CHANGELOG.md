@@ -10,6 +10,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Standalone UI Architecture**
+  - Consolidated service and UI into single standalone application
+  - Removed redundant `pomodoro-service.py` file
+  - Integrated screen overlay functionality directly into UI
+  - Added single instance protection with file locking
+  - Simplified architecture with single process design
+
+- **Enhanced Installation Process**
+  - `make install` now automatically enables autostart service
+  - New `make install-and-start` target for explicit installation with auto-start
+  - Enhanced start script with robust environment variable handling
+  - Better error handling and fallback mechanisms for service startup
+
+- **Improved Service Management**
+  - New make commands for service management: `make start`, `make stop`, `make restart`, `make status`, `make logs`
+  - Improved system service user management with make commands
+  - Better troubleshooting and debugging capabilities
+
+- **Documentation Updates**
+  - Updated README.md with new standalone UI architecture
+  - Enhanced detailed documentation with improved service management instructions
+  - Added troubleshooting section for common service issues
+  - Updated configuration management documentation
+
+### Changed
+- **Architecture**: Moved from service/UI split to standalone UI design
+- **Installation Behavior**: `make install` now enables autostart service automatically
+- **Service Configuration**: Updated to run UI directly instead of separate service
+- **Start Script**: Enhanced robustness with multiple fallback strategies for environment variables
+- **Documentation**: Streamlined installation and service management instructions using make commands
+
+### Removed
+- **Redundant Code**: Removed `pomodoro-service.py` file
+- **Service Communication**: Removed service/UI communication code
+- **Unused Methods**: Removed `detect_desktop_environment` and `stop_service_and_exit` methods
+- **Unused Imports**: Removed unused `time` import from UI
+
+### Fixed
+- **Service Startup Issues**: Resolved problems with service exiting immediately after installation
+- **Environment Variables**: Fixed issues with DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR detection
+- **Systemd Configuration**: Removed deprecated `%R` specifier that was causing warnings
+
+### Technical Improvements
+- **Start Script Robustness**: Added multiple fallback methods for environment variable detection
+- **Error Handling**: Improved error handling in installation and startup processes
+- **Service Reliability**: Enhanced service startup reliability across different desktop environments
+- **Code Cleanup**: Removed duplicate overlay classes and redundant functionality
+
+## [1.1.0] - 2024-12-19
+
+### Added
 - **Improved Installation Process**
   - `make install` now automatically starts the service after installation
   - New `make install-and-start` target for explicit installation with auto-start
@@ -176,4 +227,24 @@ When adding new entries to the changelog, please follow these guidelines:
 - **GitHub**: [@vgundala](https://github.com/vgundala)
 - **Project**: [pomodoro-lock](https://github.com/vgundala/pomodoro-lock)
 
-For more information about this project, see the [README.md](README.md) and [docs/README.md](docs/README.md) files. 
+For more information about this project, see the [README.md](README.md) and [docs/README.md](docs/README.md) files.
+
+## Architecture Diagram
+┌─────────────────────────────────────────────────────────────┐
+│                    Standalone UI                            │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │   Timer Window  │  │  System Tray    │  │   Overlays  │ │
+│  │  (Draggable)    │  │  (AppIndicator) │  │ (Multi-Display) │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Single Process (pomodoro-ui.py)            │ │
+│  │  • Timer Logic • Notifications • File Locking • Cleanup │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │  Systemd Service │
+                    │  (Autostart)     │
+                    └─────────────────┘ 

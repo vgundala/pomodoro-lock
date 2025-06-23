@@ -130,19 +130,16 @@ if [ -d "$SYSTEM_NOTIFY2_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/notify2" ]; then
     cp -r "$SYSTEM_NOTIFY2_PATH" "$VENV_SITE_PACKAGES/"
 fi
 
-# Copy application files
-echo ""
-echo -e "${BLUE}📋 Installing application files...${NC}"
-cp src/pomodoro-service.py ~/.local/share/pomodoro-lock/
+# Copy source files
 cp src/pomodoro-ui.py ~/.local/share/pomodoro-lock/
-cp src/pomodoro-lock.py ~/.local/share/pomodoro-lock/  # Keep for reference
+cp scripts/start-pomodoro.sh ~/.local/share/pomodoro-lock/
+cp scripts/configure-pomodoro.py ~/.local/share/pomodoro-lock/
 
 if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
     echo -e "${BLUE}📄 Creating default configuration...${NC}"
     cp config/config.json ~/.local/share/pomodoro-lock/config/
 fi
 
-cp scripts/configure-pomodoro.py ~/.local/share/pomodoro-lock/
 chmod +x ~/.local/share/pomodoro-lock/configure-pomodoro.py
 
 # Create launcher scripts
@@ -154,21 +151,21 @@ source ~/.local/share/pomodoro-lock/venv/bin/activate
 cd ~/.local/share/pomodoro-lock
 
 case "${1:-ui}" in
-    "service"|"start")
-        echo "Starting Pomodoro Lock service..."
-        exec python3 pomodoro-service.py
-        ;;
-    "ui")
+    "ui"|"start")
         echo "Starting Pomodoro Lock UI..."
         exec python3 pomodoro-ui.py
         ;;
     "stop")
-        echo "Stopping Pomodoro Lock service..."
-        systemctl --user stop pomodoro-lock.service
+        echo "Stopping Pomodoro Lock UI..."
+        pkill -f "pomodoro-ui.py"
         ;;
     "status")
-        echo "Service status:"
-        systemctl --user status pomodoro-lock.service
+        echo "UI status:"
+        if pgrep -f "pomodoro-ui.py" > /dev/null; then
+            echo "Pomodoro Lock UI is running"
+        else
+            echo "Pomodoro Lock UI is not running"
+        fi
         ;;
     "help"|"-h"|"--help")
         echo "Pomodoro Lock Launcher"
@@ -177,11 +174,10 @@ case "${1:-ui}" in
         echo "Usage: $0 [command]"
         echo ""
         echo "Commands:"
-        echo "  ui      - Start UI client (default)"
-        echo "  service - Start the service"
-        echo "  start   - Alias for service"
-        echo "  stop    - Stop the service"
-        echo "  status  - Show service status"
+        echo "  ui      - Start UI (default)"
+        echo "  start   - Alias for ui"
+        echo "  stop    - Stop the UI"
+        echo "  status  - Show UI status"
         echo "  help    - Show this help"
         ;;
     *)
@@ -202,6 +198,17 @@ EOF
 chmod +x ~/.local/bin/pomodoro-lock
 chmod +x ~/.local/bin/pomodoro-configure
 
+# Install icon file
+echo ""
+echo -e "${BLUE}🔧 Installing application icon...${NC}"
+ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+mkdir -p "$ICON_DIR"
+cp pomodoro-lock.svg "$ICON_DIR/pomodoro-lock.svg"
+
+# Update icon cache
+echo "Updating icon cache..."
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" || true
+
 # Install desktop file for application menu
 echo ""
 echo -e "${BLUE}🔧 Installing application launcher...${NC}"
@@ -209,8 +216,8 @@ mkdir -p ~/.local/share/applications/
 cp debian/pomodoro-lock.desktop ~/.local/share/applications/pomodoro-lock.desktop
 # Update Exec to point to the user's local bin
 sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/pomodoro-lock ui|" ~/.local/share/applications/pomodoro-lock.desktop
-# Update Icon to be an absolute path
-sed -i "s|^Icon=.*|Icon=$PWD/pomodoro-lock.svg|" ~/.local/share/applications/pomodoro-lock.desktop
+# Update Icon to use the installed icon name
+sed -i "s|^Icon=.*|Icon=pomodoro-lock|" ~/.local/share/applications/pomodoro-lock.desktop
 
 # Setup systemd service
 echo ""
@@ -221,20 +228,6 @@ mkdir -p ~/.config/systemd/user/
 cp config/pomodoro-lock.service ~/.config/systemd/user/pomodoro-lock.service
 sed -i "s|%h|$HOME|g" ~/.config/systemd/user/pomodoro-lock.service
 
-# Enable and start service
-systemctl --user daemon-reload
-systemctl --user enable pomodoro-lock.service
-
-echo ""
-echo -e "${BLUE}🚀 Starting service...${NC}"
-systemctl --user start pomodoro-lock.service
-
-# Launch UI in the background
-echo -e "${BLUE}🚀 Launching UI...${NC}"
-if [ -f "$HOME/.local/bin/pomodoro-lock" ]; then
-    nohup "$HOME/.local/bin/pomodoro-lock" ui >/dev/null 2>&1 &
-fi
-
 # Final output
 echo ""
 echo -e "${GREEN}🎉 Installation Complete!${NC}"
@@ -242,7 +235,7 @@ echo "========================"
 echo ""
 echo -e "${GREEN}✅ Pomodoro Lock has been installed successfully!${NC}"
 echo ""
-echo -e "${BLUE}📋 Service Management:${NC}"
+echo -e "${BLUE}📋 UI Management:${NC}"
 echo "  Start:   systemctl --user start pomodoro-lock.service"
 echo "  Stop:    systemctl --user stop pomodoro-lock.service"
 echo "  Status:  systemctl --user status pomodoro-lock.service"
@@ -250,7 +243,6 @@ echo "  Logs:    journalctl --user -u pomodoro-lock.service -f"
 echo ""
 echo -e "${BLUE}🔧 Convenience Commands:${NC}"
 echo "  UI:      pomodoro-lock ui"
-echo "  Service: pomodoro-lock service"
 echo "  Config:  pomodoro-configure"
 echo ""
 echo -e "${BLUE}📁 Files:${NC}"
@@ -258,13 +250,13 @@ echo "  Config:  ~/.local/share/pomodoro-lock/config/config.json"
 echo "  Venv:    ~/.local/share/pomodoro-lock/venv/"
 echo ""
 echo -e "${BLUE}🏗️  Architecture:${NC}"
-echo "  - Service: Manages timer, notifications, and overlays"
-echo "  - UI: Lightweight display client that reads from service"
+echo "  - Standalone UI: Complete timer application with overlays"
+echo "  - Auto-start: Enable with: systemctl --user enable pomodoro-lock.service"
 echo ""
 echo -e "${YELLOW}⚠️  Important Notes:${NC}"
 echo "  - Add ~/.local/bin to your PATH if not already there:"
 echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo ""
-echo -e "${GREEN}🌐 The service will start automatically on login.${NC}"
+echo -e "${GREEN}🌐 To enable autostart, run: systemctl --user enable pomodoro-lock.service${NC}"
 echo ""
 echo -e "${BLUE}❓ Need help? Check: https://github.com/vgundala/pomodoro-lock#readme${NC}" 
