@@ -15,23 +15,44 @@ import threading
 import sys
 from pathlib import Path
 
-# Import platform abstraction layers
-from platform_abstraction import (
-    NotificationManager,
-    SystemTrayManager,
-    ScreenManager,
-    AutostartManager,
-    FileLockManager,
-    SYSTEM
-)
+# Import platform abstraction layers with explicit imports to avoid circular issues
+import platform as platform_module
+SYSTEM = platform_module.system().lower()
+
+if SYSTEM == "linux":
+    from platform_abstraction.linux import (
+        NotificationManager,
+        SystemTrayManager,
+        ScreenManager,
+        AutostartManager,
+        FileLockManager
+    )
+elif SYSTEM == "windows":
+    from platform_abstraction.windows import (
+        NotificationManager,
+        SystemTrayManager,
+        ScreenManager,
+        AutostartManager,
+        FileLockManager
+    )
+else:
+    raise ImportError(f"Unsupported platform: {SYSTEM}")
 
 # Import cross-platform GUI
-from gui import (
-    TimerWindow,
-    FullScreenOverlay,
-    MultiDisplayOverlay,
-    SYSTEM as GUI_SYSTEM
-)
+if SYSTEM == "linux":
+    from gui.gtk_ui import (
+        TimerWindow,
+        FullScreenOverlay,
+        MultiDisplayOverlay
+    )
+elif SYSTEM == "windows":
+    from gui.tkinter_ui import (
+        TimerWindow,
+        FullScreenOverlay,
+        MultiDisplayOverlay
+    )
+else:
+    raise ImportError(f"Unsupported platform: {SYSTEM}")
 
 # Setup logging
 def setup_logging():
