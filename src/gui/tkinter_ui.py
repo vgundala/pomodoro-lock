@@ -63,6 +63,9 @@ class TimerWindow(tk.Toplevel):
         )
         self.close_button.pack(side='left')
         
+        # Add tooltip for close button
+        self._create_tooltip(self.close_button, "Close to tray")
+        
         # Power button
         self.power_button = tk.Button(
             button_frame,
@@ -78,6 +81,9 @@ class TimerWindow(tk.Toplevel):
         )
         self.power_button.pack(side='left', padx=(5, 0))
         
+        # Add tooltip for power button
+        self._create_tooltip(self.power_button, "Quit Pomodoro Lock")
+        
         # Bind mouse events for dragging
         self.bind('<Button-1>', self._on_button_press)
         self.bind('<B1-Motion>', self._on_motion)
@@ -91,6 +97,30 @@ class TimerWindow(tk.Toplevel):
         # State tracking
         self.current_state = 'work'
         self.is_paused = False
+    
+    def _create_tooltip(self, widget, text):
+        """Create a tooltip for a widget"""
+        def show_tooltip(event):
+            tooltip = tk.Toplevel()
+            tooltip.wm_overrideredirect(True)
+            tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
+            
+            label = tk.Label(tooltip, text=text, 
+                           justify='left',
+                           background="#ffffe0", 
+                           relief='solid', 
+                           borderwidth=1,
+                           font=("Arial", "8", "normal"))
+            label.pack()
+            
+            def hide_tooltip(event):
+                tooltip.destroy()
+            
+            widget.tooltip = tooltip
+            widget.bind('<Leave>', hide_tooltip)
+            tooltip.bind('<Leave>', hide_tooltip)
+        
+        widget.bind('<Enter>', show_tooltip)
     
     def _on_button_press(self, event):
         """Handle mouse button press for dragging"""

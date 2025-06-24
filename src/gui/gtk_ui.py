@@ -123,6 +123,9 @@ class TimerWindow(Gtk.Window):
         self.close_button.set_margin_start(5)
         self.close_button.set_margin_top(5)
         
+        # Add tooltip for close button
+        self.close_button.set_tooltip_text("Close to tray")
+        
         close_style = self.close_button.get_style_context()
         close_style.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         close_style.add_class("corner-button")
@@ -137,6 +140,9 @@ class TimerWindow(Gtk.Window):
         self.power_button.set_valign(Gtk.Align.END)
         self.power_button.set_margin_start(5)
         self.power_button.set_margin_bottom(5)
+        
+        # Add tooltip for power button
+        self.power_button.set_tooltip_text("Quit Pomodoro Lock")
         
         power_style = self.power_button.get_style_context()
         power_style.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
