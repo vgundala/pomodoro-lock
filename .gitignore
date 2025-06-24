@@ -24,6 +24,7 @@ MANIFEST
 # PyInstaller
 *.manifest
 *.spec
+!pomodoro-lock.spec
 
 # Installer logs
 pip-log.txt
