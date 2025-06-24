@@ -128,7 +128,6 @@ def test_script_permissions():
         script_files = [
             'scripts/install.sh',
             'scripts/configure-pomodoro.py',
-            'scripts/start-pomodoro.sh'
         ]
         
         missing_executable = []
@@ -161,6 +160,31 @@ def test_notification_simulation():
         print(f"FAIL Notification simulation failed: {e}")
         return False
 
+def test_application_startup():
+    """Test that the application can start without errors"""
+    print("Testing application startup...")
+    
+    try:
+        # Test the cross-platform UI
+        result = subprocess.run([
+            sys.executable, 'src/pomodoro-ui-crossplatform.py',
+            '--help'
+        ], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0 or "usage" in result.stdout.lower() or "help" in result.stdout.lower():
+            print("✅ Application startup test passed")
+            return True
+        else:
+            print(f"❌ Application startup test failed: {result.stderr}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("❌ Application startup test timed out")
+        return False
+    except Exception as e:
+        print(f"❌ Application startup test error: {e}")
+        return False
+
 def main():
     print("Starting CI Tests for Pomodoro Lock")
     print("=" * 50)
@@ -173,6 +197,7 @@ def main():
         ("Module Imports", test_imports),
         ("Configuration Loading", test_config_loading),
         ("Notification Simulation", test_notification_simulation),
+        ("Application Startup", test_application_startup),
     ]
     
     results = []

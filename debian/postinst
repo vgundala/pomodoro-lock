@@ -5,42 +5,77 @@ set -e
 
 case "$1" in
     configure)
-        echo "Pomodoro Lock - Standalone UI Installation"
-        echo "=========================================="
+        echo "Pomodoro Lock - Post-installation setup"
+        echo "======================================"
+
+        # Get the current user (the one installing the package)
+        CURRENT_USER=${SUDO_USER:-$USER}
+        USER_HOME=$(eval echo ~$CURRENT_USER)
+
+        echo "Setting up for user: $CURRENT_USER"
+
+        # Create user's .local directory structure
+        echo "Creating user directory structure..."
+        sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.local/share/pomodoro-lock"
+        sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.local/bin"
+        sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.local/share/applications"
+        sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.local/share/icons/hicolor/scalable/apps"
+        sudo -u "$CURRENT_USER" mkdir -p "$USER_HOME/.config/systemd/user"
+
+        # Copy application files to user's .local directory
+        echo "Installing application files to user directory..."
+        sudo -u "$CURRENT_USER" cp -r /usr/share/pomodoro-lock/* "$USER_HOME/.local/share/pomodoro-lock/"
+
+        # Create symlinks for executables in user's .local/bin
+        echo "Creating executable symlinks..."
+        sudo -u "$CURRENT_USER" ln -sf /usr/bin/pomodoro-lock "$USER_HOME/.local/bin/pomodoro-lock"
+        sudo -u "$CURRENT_USER" ln -sf /usr/bin/pomodoro-service "$USER_HOME/.local/bin/pomodoro-service"
+        sudo -u "$CURRENT_USER" ln -sf /usr/bin/pomodoro-configure "$USER_HOME/.local/bin/pomodoro-configure"
+
+        # Copy desktop file to user's applications
+        echo "Installing desktop launcher..."
+        sudo -u "$CURRENT_USER" cp /usr/share/applications/pomodoro-lock.desktop "$USER_HOME/.local/share/applications/"
+
+        # Copy icon to user's icons
+        echo "Installing application icon..."
+        sudo -u "$CURRENT_USER" cp /usr/share/icons/hicolor/scalable/apps/pomodoro-lock.svg "$USER_HOME/.local/share/icons/hicolor/scalable/apps/"
+
+        # Update desktop file to point to user's .local/bin
+        echo "Updating desktop file paths..."
+        sudo -u "$CURRENT_USER" sed -i "s|^Exec=.*|Exec=$USER_HOME/.local/bin/pomodoro-lock ui|" "$USER_HOME/.local/share/applications/pomodoro-lock.desktop"
+        sudo -u "$CURRENT_USER" sed -i "s|^Icon=.*|Icon=pomodoro-lock|" "$USER_HOME/.local/share/applications/pomodoro-lock.desktop"
+
+        # Copy systemd service file to user's config
+        echo "Installing systemd service..."
+        sudo -u "$CURRENT_USER" cp /usr/share/pomodoro-lock/systemd/pomodoro-lock.service "$USER_HOME/.config/systemd/user/"
+
+        # Update service file to point to user's .local directory
+        echo "Updating service file paths..."
+        sudo -u "$CURRENT_USER" sed -i "s|%h|$USER_HOME|g" "$USER_HOME/.config/systemd/user/pomodoro-lock.service"
+        sudo -u "$CURRENT_USER" sed -i "s|ExecStart=.*|ExecStart=$USER_HOME/.local/bin/pomodoro-lock ui|" "$USER_HOME/.config/systemd/user/pomodoro-lock.service"
+
+        # Update icon cache
+        echo "Updating icon cache..."
+        sudo -u "$CURRENT_USER" gtk-update-icon-cache -f -t "$USER_HOME/.local/share/icons/hicolor" || true
+
+        # Reload systemd for the user
+        echo "Reloading systemd..."
+        sudo -u "$CURRENT_USER" systemctl --user daemon-reload 2>/dev/null || echo "Note: Systemd daemon-reload failed (this is normal during package installation)"
+
         echo ""
-        echo "The application has been installed to /usr/share/pomodoro-lock"
-        echo "User data will be stored in ~/.local/share/pomodoro-lock"
+        echo "✅ Pomodoro Lock has been installed to user directory!"
         echo ""
-        echo "New Architecture:"
-        echo "  - Standalone UI: Complete timer application with integrated overlays"
-        echo "  - Systemd Service: Manages autostart and process lifecycle"
+        echo "📁 Installation location: $USER_HOME/.local/share/pomodoro-lock"
+        echo "🔧 Executables: $USER_HOME/.local/bin/pomodoro-lock"
+        echo "⚙️  Service: $USER_HOME/.config/systemd/user/pomodoro-lock.service"
         echo ""
-        echo "Available commands:"
-        echo "  pomodoro-lock      - Start UI (default)"
-        echo "  pomodoro-lock ui   - Start UI"
-        echo "  pomodoro-lock service - Start the systemd service"
-        echo "  pomodoro-lock stop - Stop the systemd service"
-        echo "  pomodoro-lock status - Show service status"
-        echo "  pomodoro-configure - Configure the application"
+        echo "🚀 To start the application:"
+        echo "   pomodoro-lock"
         echo ""
-        echo "Recommended usage:"
-        echo "  1. Start the UI: pomodoro-lock ui"
-        echo "  2. Or enable autostart: systemctl --user enable pomodoro-lock.service"
+        echo "🔗 Autostart will be enabled automatically on first launch."
         echo ""
-        echo "The first time you run 'pomodoro-lock', it will:"
-        echo "  1. Create a virtual environment in ~/.local/share/pomodoro-lock/venv"
-        echo "  2. Install Python dependencies (including notification support)"
-        echo "  3. Set up user configuration"
-        echo "  4. Configure systemd user service"
-        echo ""
-        echo "Features:"
-        echo "  - Desktop notifications before break periods"
-        echo "  - Multi-display screen overlays during breaks"
-        echo "  - System tray integration"
-        echo "  - Configurable work/break cycles"
-        echo ""
-        echo "To get started, run: pomodoro-lock"
-        echo ""
+        echo "📋 To configure:"
+        echo "   pomodoro-configure"
         ;;
     abort-upgrade|abort-remove|abort-deconfigure)
         ;;

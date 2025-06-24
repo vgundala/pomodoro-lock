@@ -3,33 +3,44 @@
 
 set -e
 
-case "$1" in
-    remove|purge)
-        echo "Pomodoro Lock - Pre-removal cleanup"
-        echo "=================================="
-        echo ""
-        echo "Note: User data in ~/.local/share/pomodoro-lock will be preserved."
-        echo "To completely remove all data, manually delete:"
-        echo "  ~/.local/share/pomodoro-lock/"
-        echo "  ~/.config/systemd/user/pomodoro-lock.service"
-        echo ""
-        
-        # Stop and disable the service if it exists
-        if systemctl --user list-unit-files | grep -q pomodoro-lock.service; then
-            echo "Stopping and disabling systemd service..."
-            systemctl --user stop pomodoro-lock.service 2>/dev/null || true
-            systemctl --user disable pomodoro-lock.service 2>/dev/null || true
-            systemctl --user daemon-reload
-        fi
-        ;;
-    upgrade)
-        ;;
-    failed-upgrade)
-        ;;
-    *)
-        echo "prerm called with unknown argument \`$1'" >&2
-        exit 1
-        ;;
-esac
+log() {
+    echo "[prerm] $1"
+}
+
+log "Pomodoro Lock - Pre-removal cleanup"
+log "=================================="
+
+# Only clean up for real users with valid login shells
+while IFS=: read -r username _ uid gid userdesc homedir shell; do
+    # Skip system users and users without a home directory
+    if [[ $uid -ge 1000 && -d "$homedir" && $shell != "/usr/sbin/nologin" && $shell != "/bin/false" ]]; then
+        log "Cleaning up for user: $username ($homedir)"
+        # Stop and disable services with a timeout
+        timeout 5s sudo -u "$username" systemctl --user stop pomodoro-lock.service 2>/dev/null || true
+        timeout 5s sudo -u "$username" systemctl --user disable pomodoro-lock.service 2>/dev/null || true
+        timeout 5s sudo -u "$username" systemctl --user stop pomodoro.service 2>/dev/null || true
+        timeout 5s sudo -u "$username" systemctl --user disable pomodoro.service 2>/dev/null || true
+        # Kill any running processes
+        timeout 5s sudo -u "$username" pkill -f "pomodoro-ui-crossplatform.py" 2>/dev/null || true
+        timeout 5s sudo -u "$username" pkill -f "pomodoro-ui.py" 2>/dev/null || true
+        timeout 5s sudo -u "$username" pkill -f "pomodoro" 2>/dev/null || true
+        # Remove user's .local installation
+        sudo -u "$username" rm -rf "$homedir/.local/share/pomodoro-lock" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.local/bin/pomodoro-lock" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.local/bin/pomodoro-service" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.local/bin/pomodoro-configure" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.local/share/applications/pomodoro-lock.desktop" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.local/share/icons/hicolor/scalable/apps/pomodoro-lock.svg" 2>/dev/null || true
+        # Remove service files
+        sudo -u "$username" rm -f "$homedir/.config/systemd/user/pomodoro-lock.service" 2>/dev/null || true
+        sudo -u "$username" rm -f "$homedir/.config/systemd/user/pomodoro.service" 2>/dev/null || true
+        # Update icon cache
+        sudo -u "$username" gtk-update-icon-cache -f -t "$homedir/.local/share/icons/hicolor" 2>/dev/null || true
+        # Reload systemd for this user
+        timeout 5s sudo -u "$username" systemctl --user daemon-reload 2>/dev/null || true
+    fi
+done < <(getent passwd)
+
+log "✅ All real user installations have been cleaned up."
 
 exit 0 

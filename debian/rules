@@ -12,15 +12,17 @@ override_dh_auto_install:
 	# Skip the Makefile install target to avoid root check issues
 	# dh_auto_install --destdir=debian/pomodoro-lock
 	
-	# Install application files to userspace
+	# Install application files to user's .local directory
 	mkdir -p debian/pomodoro-lock/usr/share/pomodoro-lock/
-	cp src/pomodoro-ui.py debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp src/pomodoro-ui-crossplatform.py debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r src/platform_abstraction/ debian/pomodoro-lock/usr/share/pomodoro-lock/
+	cp -r src/gui/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r scripts/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r config/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r tests/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	cp -r docs/ debian/pomodoro-lock/usr/share/pomodoro-lock/
 	
-	# Install launcher script
+	# Install launcher script to system bin (will be symlinked to .local/bin)
 	mkdir -p debian/pomodoro-lock/usr/bin/
 	cp debian/launcher.sh debian/pomodoro-lock/usr/bin/pomodoro-lock
 	chmod +x debian/pomodoro-lock/usr/bin/pomodoro-lock

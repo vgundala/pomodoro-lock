@@ -73,9 +73,7 @@ show_status() {
 
 # Function to enable service
 enable_service() {
-    echo "Enabling Pomodoro Lock service..."
-    systemctl --user enable pomodoro-lock.service
-    echo "✓ Service enabled (will start on login)"
+    echo "Pomodoro Lock service autostart is enabled on first launch by the app"
 }
 
 # Function to disable service

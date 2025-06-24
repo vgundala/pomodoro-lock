@@ -49,21 +49,15 @@ install:
 	@echo "Installing Pomodoro Lock (Standalone UI Architecture)..."
 	@chmod +x scripts/install.sh
 	@./scripts/install.sh
-	@echo "Enabling autostart service..."
-	@systemctl --user daemon-reload
-	@systemctl --user enable pomodoro-lock.service
-	@echo "Autostart enabled! Pomodoro Lock will start automatically on login."
+	@echo "✅ Installation complete! Service is enabled for autostart."
 
 install-and-start:
 	@echo "Installing Pomodoro Lock (Standalone UI Architecture) and starting it..."
 	@chmod +x scripts/install.sh
 	@./scripts/install.sh
-	@echo "Enabling autostart service..."
-	@systemctl --user daemon-reload
-	@systemctl --user enable pomodoro-lock.service
 	@echo "Starting UI..."
 	@systemctl --user start pomodoro-lock.service
-	@echo "UI started successfully and autostart enabled!"
+	@echo "✅ UI started successfully and autostart enabled!"
 
 check-deps:
 	@echo "Checking Pomodoro Lock dependencies..."

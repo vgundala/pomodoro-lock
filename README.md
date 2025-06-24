@@ -304,3 +304,29 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Installation
+
+1. Install the .deb package:
+   ```bash
+   sudo dpkg -i pomodoro-lock_<version>_all.deb
+   ```
+2. Run the app for the first time:
+   ```bash
+   pomodoro-lock
+   ```
+   - On first launch, autostart will be enabled automatically for your user session.
+   - No need to manually enable the service.
+
+## Uninstall
+
+- Use your package manager or:
+  ```bash
+  sudo dpkg -r pomodoro-lock
+  ```
+- If you encounter issues uninstalling, ensure no Pomodoro Lock processes are running and try again.
+
+## Troubleshooting
+
+- If autostart does not work, ensure you have launched the app at least once from your user session.
+- The app will only enable autostart if run from a graphical session with user systemd available.

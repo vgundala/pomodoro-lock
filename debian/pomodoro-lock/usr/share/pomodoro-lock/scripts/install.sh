@@ -131,8 +131,9 @@ if [ -d "$SYSTEM_NOTIFY2_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/notify2" ]; then
 fi
 
 # Copy source files
-cp src/pomodoro-ui.py ~/.local/share/pomodoro-lock/
-cp scripts/start-pomodoro.sh ~/.local/share/pomodoro-lock/
+cp src/pomodoro-ui-crossplatform.py ~/.local/share/pomodoro-lock/
+cp -r src/platform_abstraction/ ~/.local/share/pomodoro-lock/
+cp -r src/gui/ ~/.local/share/pomodoro-lock/
 cp scripts/configure-pomodoro.py ~/.local/share/pomodoro-lock/
 
 if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
@@ -140,7 +141,6 @@ if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
     cp config/config.json ~/.local/share/pomodoro-lock/config/
 fi
 
-chmod +x ~/.local/share/pomodoro-lock/start-pomodoro.sh
 chmod +x ~/.local/share/pomodoro-lock/configure-pomodoro.py
 
 # Create launcher scripts
@@ -154,19 +154,41 @@ cd ~/.local/share/pomodoro-lock
 case "${1:-ui}" in
     "ui"|"start")
         echo "Starting Pomodoro Lock UI..."
-        exec python3 pomodoro-ui.py
+        # Check if already running and stop if needed
+        if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
+            echo "Stopping existing instance..."
+            pkill -f "pomodoro-ui-crossplatform.py"
+            sleep 1
+        fi
+        exec python3 pomodoro-ui-crossplatform.py
+        ;;
+    "service")
+        echo "Starting Pomodoro Lock via systemd service..."
+        systemctl --user start pomodoro-lock.service
         ;;
     "stop")
         echo "Stopping Pomodoro Lock UI..."
-        pkill -f "pomodoro-ui.py"
+        pkill -f "pomodoro-ui-crossplatform.py"
+        systemctl --user stop pomodoro-lock.service 2>/dev/null || true
         ;;
     "status")
         echo "UI status:"
-        if pgrep -f "pomodoro-ui.py" > /dev/null; then
+        if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
             echo "Pomodoro Lock UI is running"
         else
             echo "Pomodoro Lock UI is not running"
         fi
+        echo ""
+        echo "Service status:"
+        systemctl --user status pomodoro-lock.service --no-pager -l
+        ;;
+    "enable")
+        echo "Enabling autostart..."
+        systemctl --user enable pomodoro-lock.service
+        ;;
+    "disable")
+        echo "Disabling autostart..."
+        systemctl --user disable pomodoro-lock.service
         ;;
     "help"|"-h"|"--help")
         echo "Pomodoro Lock Launcher"
@@ -175,11 +197,17 @@ case "${1:-ui}" in
         echo "Usage: $0 [command]"
         echo ""
         echo "Commands:"
-        echo "  ui      - Start UI (default)"
+        echo "  ui      - Start UI (default, single instance protected)"
         echo "  start   - Alias for ui"
-        echo "  stop    - Stop the UI"
-        echo "  status  - Show UI status"
+        echo "  service - Start via systemd service"
+        echo "  stop    - Stop the UI and service"
+        echo "  status  - Show UI and service status"
+        echo "  enable  - Enable autostart"
+        echo "  disable - Disable autostart"
         echo "  help    - Show this help"
+        echo ""
+        echo "Installation location: ~/.local/share/pomodoro-lock"
+        echo "Service file: ~/.config/systemd/user/pomodoro-lock.service"
         ;;
     *)
         echo "Unknown command: $1"
@@ -252,12 +280,13 @@ echo "  Venv:    ~/.local/share/pomodoro-lock/venv/"
 echo ""
 echo -e "${BLUE}🏗️  Architecture:${NC}"
 echo "  - Standalone UI: Complete timer application with overlays"
-echo "  - Auto-start: Enable with: systemctl --user enable pomodoro-lock.service"
+echo "  - Auto-start: Will be enabled automatically on first launch"
+echo "  - Single instance: ✅ PROTECTED - Only one instance will run"
 echo ""
 echo -e "${YELLOW}⚠️  Important Notes:${NC}"
 echo "  - Add ~/.local/bin to your PATH if not already there:"
 echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
 echo ""
-echo -e "${GREEN}🌐 To enable autostart, run: systemctl --user enable pomodoro-lock.service${NC}"
+echo -e "${GREEN}🚀 Run 'pomodoro-lock' to start the app and enable autostart!${NC}"
 echo ""
 echo -e "${BLUE}❓ Need help? Check: https://github.com/vgundala/pomodoro-lock#readme${NC}" 
