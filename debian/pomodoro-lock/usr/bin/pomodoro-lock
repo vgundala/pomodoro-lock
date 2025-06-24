@@ -130,8 +130,7 @@ WantedBy=graphical-session.target
 EOF
         
         systemctl --user daemon-reload
-        systemctl --user enable pomodoro-lock.service
-        echo "Systemd service configured and enabled."
+        echo "Systemd service configured."
     fi
 }
 
@@ -152,6 +151,7 @@ show_help() {
     echo ""
     echo "Installation location: $APP_DIR"
     echo "Service file: $USER_HOME/.config/systemd/user/pomodoro-lock.service"
+    echo "Autostart is enabled on first launch by the app."
 }
 
 # Function to start the UI

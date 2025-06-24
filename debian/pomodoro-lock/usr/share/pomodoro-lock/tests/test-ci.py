@@ -128,7 +128,6 @@ def test_script_permissions():
         script_files = [
             'scripts/install.sh',
             'scripts/configure-pomodoro.py',
-            'scripts/start-pomodoro.sh'
         ]
         
         missing_executable = []

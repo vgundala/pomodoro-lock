@@ -70,56 +70,29 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 
 ## Installation
 
-### Prerequisites
-- Ubuntu/Debian-based system
-- Python 3.6+
-- GTK3 desktop environment
-- User account (not root)
-
-### Quick Installation
-
-```bash
-# Clone or download the repository
-git clone https://github.com/vgundala/pomodoro-lock.git
-cd pomodoro-lock
-
-# Check dependencies first (recommended)
-make check-deps
-
-# Install with autostart enabled
-make install
-
-# Or install and start immediately
-make install-and-start
-```
-
-### Manual Installation
-
-1. **Install Dependencies**
+1. Install the .deb package:
    ```bash
-   sudo apt-get update
-   sudo apt-get install -y python3-gi python3-psutil python3-xlib python3-notify2
+   sudo dpkg -i pomodoro-lock_<version>_all.deb
    ```
-
-2. **Create Directories**
+2. Run the app for the first time:
    ```bash
-   mkdir -p ~/.local/share/pomodoro-lock/{bin,config,scripts}
+   pomodoro-lock
    ```
+   - On first launch, autostart will be enabled automatically for your user session.
+   - No need to manually enable the service.
 
-3. **Copy Files**
-   ```bash
-   cp src/pomodoro-ui.py ~/.local/share/pomodoro-lock/bin/
-   cp scripts/start-pomodoro.sh ~/.local/share/pomodoro-lock/
-   chmod +x ~/.local/share/pomodoro-lock/bin/pomodoro-ui.py
-   chmod +x ~/.local/share/pomodoro-lock/start-pomodoro.sh
-   ```
+## Uninstall
 
-4. **Install Systemd Service**
-   ```bash
-   cp config/pomodoro-lock.service ~/.config/systemd/user/
-   systemctl --user daemon-reload
-   systemctl --user enable pomodoro-lock.service
-   ```
+- Use your package manager or:
+  ```bash
+  sudo dpkg -r pomodoro-lock
+  ```
+- If you encounter issues uninstalling, ensure no Pomodoro Lock processes are running and try again.
+
+## Troubleshooting
+
+- If autostart does not work, ensure you have launched the app at least once from your user session.
+- The app will only enable autostart if run from a graphical session with user systemd available.
 
 ## Configuration
 
