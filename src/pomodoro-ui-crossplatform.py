@@ -264,8 +264,9 @@ class PomodoroTimer:
                     if self.current_time == 0:
                         self._session_ended()
                 
-                # Update GUI
-                self._update_gui()
+                # Note: GUI updates are handled by the main thread callbacks
+                # (_gtk_update_callback or _tkinter_update_callback)
+                # This prevents race conditions and memory corruption
             
             time.sleep(1)
     
@@ -289,42 +290,72 @@ class PomodoroTimer:
     
     def _start_break(self):
         """Start break session"""
-        logging.info("Starting break session")
-        self.is_work_session = False
-        self.current_time = self.break_time
-        
-        # Show break overlay
-        self.multi_overlay.create_overlays()
-        self.multi_overlay.show_all()
-        
-        # Send notification
-        self.notification_manager.send_notification(
-            "Pomodoro Lock",
-            "Break time! Take a rest.",
-            "high"
-        )
-        
-        # Update system tray
-        self._update_system_tray()
+        try:
+            logging.info("Starting break session")
+            self.is_work_session = False
+            self.current_time = self.break_time
+            
+            # Lower timer window to ensure overlay is on top
+            try:
+                self.timer_window.lower_window()
+            except Exception as e:
+                logging.error(f"Failed to lower timer window: {e}")
+            
+            # Show break overlay
+            try:
+                self.multi_overlay.create_overlays()
+                self.multi_overlay.show_all()
+            except Exception as e:
+                logging.error(f"Failed to show break overlay: {e}")
+            
+            # Send notification
+            try:
+                self.notification_manager.send_notification(
+                    "Pomodoro Lock",
+                    "Break time! Take a rest.",
+                    "high"
+                )
+            except Exception as e:
+                logging.error(f"Failed to send break notification: {e}")
+            
+            # Update system tray
+            self._update_system_tray()
+        except Exception as e:
+            logging.error(f"Error starting break session: {e}")
     
     def _end_break(self):
         """End break session"""
-        logging.info("Ending break session")
-        self.is_work_session = True
-        self.current_time = self.work_time
-        
-        # Hide break overlay
-        self.multi_overlay.hide_all()
-        
-        # Send notification
-        self.notification_manager.send_notification(
-            "Pomodoro Lock",
-            "Break ended! Back to work.",
-            "normal"
-        )
-        
-        # Update system tray
-        self._update_system_tray()
+        try:
+            logging.info("Ending break session")
+            self.is_work_session = True
+            self.current_time = self.work_time
+            
+            # Hide break overlay
+            try:
+                self.multi_overlay.hide_all()
+            except Exception as e:
+                logging.error(f"Failed to hide break overlay: {e}")
+            
+            # Raise timer window back to normal level
+            try:
+                self.timer_window.raise_window()
+            except Exception as e:
+                logging.error(f"Failed to raise timer window: {e}")
+            
+            # Send notification
+            try:
+                self.notification_manager.send_notification(
+                    "Pomodoro Lock",
+                    "Break ended! Back to work.",
+                    "normal"
+                )
+            except Exception as e:
+                logging.error(f"Failed to send break end notification: {e}")
+            
+            # Update system tray
+            self._update_system_tray()
+        except Exception as e:
+            logging.error(f"Error ending break session: {e}")
     
     def _update_gui(self):
         """Update GUI components"""
@@ -345,6 +376,7 @@ class PomodoroTimer:
             self._update_system_tray()
         except Exception as e:
             logging.error(f"Failed to update GUI: {e}")
+            # Don't re-raise - just log and continue
     
     def _update_system_tray(self):
         """Update system tray status"""
@@ -353,6 +385,7 @@ class PomodoroTimer:
             self.system_tray.update_status(state, self.current_time)
         except Exception as e:
             logging.error(f"Failed to update system tray: {e}")
+            # Don't re-raise - just log and continue
     
     def _show_system_tray(self):
         """Show system tray icon"""
@@ -388,21 +421,32 @@ class PomodoroTimer:
     
     def _gtk_update_callback(self):
         """GTK timer callback for GUI updates"""
-        if not self.is_running:
-            Gtk.main_quit()
-            return False
-        
-        self._update_gui()
-        return True
+        try:
+            if not self.is_running:
+                Gtk.main_quit()
+                return False
+            
+            self._update_gui()
+            return True
+        except Exception as e:
+            logging.error(f"Error in GTK update callback: {e}")
+            # Continue the timer even if GUI update fails
+            return True
     
     def _tkinter_update_callback(self):
         """Tkinter timer callback for GUI updates"""
-        if not self.is_running:
-            self.root.quit()
-            return
-        
-        self._update_gui()
-        self.root.after(1000, self._tkinter_update_callback)
+        try:
+            if not self.is_running:
+                self.root.quit()
+                return
+            
+            self._update_gui()
+            self.root.after(1000, self._tkinter_update_callback)
+        except Exception as e:
+            logging.error(f"Error in Tkinter update callback: {e}")
+            # Continue the timer even if GUI update fails
+            if self.is_running:
+                self.root.after(1000, self._tkinter_update_callback)
     
     def show_timer(self):
         """Show the timer window"""

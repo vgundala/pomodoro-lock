@@ -2,7 +2,7 @@ Package: pomodoro-lock
 Version: 1.2.0-1
 Architecture: all
 Maintainer: Vinay Gundala <vg@ivdata.dev>
-Installed-Size: 275
+Installed-Size: 269
 Depends: python3, python3-venv, python3-gi, python3-notify2, python3-dbus, gir1.2-appindicator3-0.1
 Section: utils
 Priority: optional

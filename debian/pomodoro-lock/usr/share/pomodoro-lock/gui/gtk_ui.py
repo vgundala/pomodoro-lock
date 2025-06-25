@@ -22,6 +22,10 @@ class TimerWindow(Gtk.Window):
         self.set_keep_above(True)
         self.set_default_size(350, 120)
         
+        # Set window hints to ensure proper z-order
+        self.set_type_hint(Gdk.WindowTypeHint.NORMAL)
+        self.set_accept_focus(True)
+        
         # Move to left bottom
         display = Gdk.Display.get_default()
         monitor = display.get_primary_monitor() if display else display.get_monitor(0)
@@ -110,7 +114,11 @@ class TimerWindow(Gtk.Window):
         
         # Timer label (centered)
         self.label = Gtk.Label()
-        self.label.set_markup("<span size='x-large' weight='bold' foreground='white'>00:00</span>")
+        try:
+            self.label.set_markup("<span size='x-large' weight='bold' foreground='white'>00:00</span>")
+        except Exception as e:
+            # Fallback to simple text if markup fails
+            self.label.set_text("00:00")
         self.label.set_halign(Gtk.Align.CENTER)
         self.label.set_valign(Gtk.Align.CENTER)
         self.overlay.add_overlay(self.label)
@@ -207,25 +215,40 @@ class TimerWindow(Gtk.Window):
     
     def update_timer(self, seconds, state='work', is_paused=False):
         """Update the timer display"""
-        minutes = seconds // 60
-        secs = seconds % 60
-        time_str = f"{minutes:02d}:{secs:02d}"
-        
-        # Update label
-        self.label.set_markup(f"<span size='x-large' weight='bold' foreground='white'>{time_str}</span>")
-        
-        # Update CSS classes based on state
-        style_context = self.box.get_style_context()
-        
-        # Remove old state classes
-        style_context.remove_class("paused")
-        style_context.remove_class("break")
-        
-        # Add new state class
-        if is_paused:
-            style_context.add_class("paused")
-        elif state == "break":
-            style_context.add_class("break")
+        try:
+            minutes = seconds // 60
+            secs = seconds % 60
+            time_str = f"{minutes:02d}:{secs:02d}"
+            
+            # Ensure proper UTF-8 encoding and escape any special characters
+            safe_time_str = time_str.encode('utf-8', errors='ignore').decode('utf-8')
+            
+            # Update label with proper markup escaping
+            markup = f"<span size='x-large' weight='bold' foreground='white'>{safe_time_str}</span>"
+            self.label.set_markup(markup)
+            
+            # Update CSS classes based on state
+            style_context = self.box.get_style_context()
+            
+            # Remove old state classes
+            style_context.remove_class("paused")
+            style_context.remove_class("break")
+            
+            # Add new state class
+            if is_paused:
+                style_context.add_class("paused")
+            elif state == "break":
+                style_context.add_class("break")
+        except Exception as e:
+            # Fallback to simple text if markup fails
+            try:
+                minutes = seconds // 60
+                secs = seconds % 60
+                time_str = f"{minutes:02d}:{secs:02d}"
+                self.label.set_text(time_str)
+            except Exception as fallback_error:
+                # Last resort - set a safe default
+                self.label.set_text("00:00")
     
     def show_window(self):
         """Show the timer window"""
@@ -239,16 +262,26 @@ class TimerWindow(Gtk.Window):
     def destroy_window(self):
         """Destroy the timer window"""
         self.destroy()
+    
+    def lower_window(self):
+        """Lower the window to ensure overlay is on top"""
+        self.lower()
+    
+    def raise_window(self):
+        """Raise the window back to normal level"""
+        self.raise_()
 
 class FullScreenOverlay(Gtk.Window):
     """GTK-based fullscreen overlay for Linux"""
     
-    def __init__(self, screen_index=0):
+    def __init__(self, monitor_index=0):
         Gtk.Window.__init__(self)
         self.set_title("Pomodoro Lock - Break Time")
         self.set_decorated(False)
-        self.fullscreen()
         self.set_keep_above(True)
+        
+        # Store monitor index
+        self.monitor_index = monitor_index
         
         # Create main container
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -283,7 +316,12 @@ class FullScreenOverlay(Gtk.Window):
         self.add(self.box)
         
         # Break label
-        self.break_label = Gtk.Label(label="Break Time!")
+        self.break_label = Gtk.Label()
+        try:
+            self.break_label.set_text("Break Time!")
+        except Exception as e:
+            # Fallback to simple text if markup fails
+            self.break_label.set_text("Break Time!")
         self.break_label.set_halign(Gtk.Align.CENTER)
         break_style = self.break_label.get_style_context()
         break_style.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -291,7 +329,12 @@ class FullScreenOverlay(Gtk.Window):
         self.box.pack_start(self.break_label, False, False, 0)
         
         # Timer label
-        self.timer_label = Gtk.Label(label="00:00")
+        self.timer_label = Gtk.Label()
+        try:
+            self.timer_label.set_text("00:00")
+        except Exception as e:
+            # Fallback to safe default
+            self.timer_label.set_text("00:00")
         self.timer_label.set_halign(Gtk.Align.CENTER)
         timer_style = self.timer_label.get_style_context()
         timer_style.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -300,15 +343,61 @@ class FullScreenOverlay(Gtk.Window):
     
     def update_timer(self, seconds):
         """Update the timer display"""
-        minutes = seconds // 60
-        secs = seconds % 60
-        time_str = f"{minutes:02d}:{secs:02d}"
-        self.timer_label.set_text(time_str)
+        try:
+            minutes = seconds // 60
+            secs = seconds % 60
+            time_str = f"{minutes:02d}:{secs:02d}"
+            
+            # Ensure proper UTF-8 encoding
+            safe_time_str = time_str.encode('utf-8', errors='ignore').decode('utf-8')
+            self.timer_label.set_text(safe_time_str)
+        except Exception as e:
+            # Fallback to simple text if setting fails
+            try:
+                minutes = seconds // 60
+                secs = seconds % 60
+                time_str = f"{minutes:02d}:{secs:02d}"
+                self.timer_label.set_text(time_str)
+            except Exception as fallback_error:
+                # Last resort - set a safe default
+                self.timer_label.set_text("00:00")
     
     def show_overlay(self):
-        """Show the overlay"""
-        self.show_all()
-        self.present()
+        """Show the overlay on the specified monitor"""
+        try:
+            # Set window hints to ensure it's always on top
+            self.set_type_hint(Gdk.WindowTypeHint.DESKTOP)
+            self.set_keep_above(True)
+            self.set_accept_focus(False)
+            
+            # Get the display and monitor
+            display = Gdk.Display.get_default()
+            if display and self.monitor_index < display.get_n_monitors():
+                monitor = display.get_monitor(self.monitor_index)
+                geometry = monitor.get_geometry()
+                
+                # Move window to the monitor and make it fullscreen
+                self.move(geometry.x, geometry.y)
+                self.resize(geometry.width, geometry.height)
+                self.fullscreen_on_monitor(display, self.monitor_index)
+            
+            # Ensure window is shown and raised to top
+            self.show_all()
+            self.present()
+            self.raise_()
+            
+            # Force the window to stay on top
+            self.set_keep_above(True)
+            
+        except Exception as e:
+            # Fallback to regular fullscreen if monitor-specific positioning fails
+            self.set_type_hint(Gdk.WindowTypeHint.DESKTOP)
+            self.set_keep_above(True)
+            self.set_accept_focus(False)
+            self.fullscreen()
+            self.show_all()
+            self.present()
+            self.raise_()
     
     def hide_overlay(self):
         """Hide the overlay"""
@@ -327,34 +416,67 @@ class MultiDisplayOverlay:
     
     def create_overlays(self):
         """Create overlays for all connected displays"""
-        if not self.display:
-            return
-        
-        # Clear existing overlays
-        self.destroy_all()
-        
-        # Create overlay for each monitor
-        for i in range(self.display.get_n_monitors()):
-            overlay = FullScreenOverlay(screen_index=i)
-            self.overlays.append(overlay)
+        try:
+            if not self.display:
+                print("No display available")
+                return
+            
+            # Clear existing overlays
+            self.destroy_all()
+            
+            # Get number of monitors
+            n_monitors = self.display.get_n_monitors()
+            print(f"Creating overlays for {n_monitors} monitors")
+            
+            # Create overlay for each monitor
+            for i in range(n_monitors):
+                try:
+                    print(f"Creating overlay for monitor {i}")
+                    overlay = FullScreenOverlay(monitor_index=i)
+                    self.overlays.append(overlay)
+                except Exception as e:
+                    # Log error but continue with other monitors
+                    print(f"Failed to create overlay for monitor {i}: {e}")
+            
+            print(f"Successfully created {len(self.overlays)} overlays")
+        except Exception as e:
+            print(f"Error creating overlays: {e}")
     
     def show_all(self):
         """Show all overlays"""
-        for overlay in self.overlays:
-            overlay.show_overlay()
+        print(f"Showing {len(self.overlays)} overlays")
+        for i, overlay in enumerate(self.overlays):
+            try:
+                print(f"Showing overlay {i}")
+                overlay.show_overlay()
+            except Exception as e:
+                print(f"Failed to show overlay {i}: {e}")
     
     def hide_all(self):
         """Hide all overlays"""
-        for overlay in self.overlays:
-            overlay.hide_overlay()
+        print(f"Hiding {len(self.overlays)} overlays")
+        for i, overlay in enumerate(self.overlays):
+            try:
+                print(f"Hiding overlay {i}")
+                overlay.hide_overlay()
+            except Exception as e:
+                print(f"Failed to hide overlay {i}: {e}")
     
     def update_timer(self, seconds):
         """Update timer on all overlays"""
-        for overlay in self.overlays:
-            overlay.update_timer(seconds)
+        for i, overlay in enumerate(self.overlays):
+            try:
+                overlay.update_timer(seconds)
+            except Exception as e:
+                print(f"Failed to update overlay {i} timer: {e}")
     
     def destroy_all(self):
         """Destroy all overlays"""
-        for overlay in self.overlays:
-            overlay.destroy_overlay()
+        print(f"Destroying {len(self.overlays)} overlays")
+        for i, overlay in enumerate(self.overlays):
+            try:
+                print(f"Destroying overlay {i}")
+                overlay.destroy_overlay()
+            except Exception as e:
+                print(f"Failed to destroy overlay {i}: {e}")
         self.overlays.clear() 

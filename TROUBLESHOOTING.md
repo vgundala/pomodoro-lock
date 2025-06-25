@@ -1,268 +1,466 @@
 # Troubleshooting Guide
 
-## Externally-Managed-Environment Issues
+## System-Wide Installation Issues
 
-### **Problem**: Modern Python installations prevent direct pip installs
+### **Problem**: Installation fails with permission errors
 
 **Error Message**:
 ```
-ERROR: Could not install packages due to an OSError: [Errno 2] No such file or directory: '/usr/lib/python3.13/site-packages/pomodoro_lock-1.0.0-py3.13.egg-info'
-error: externally-managed-environment
+Permission denied: /usr/share/pomodoro-lock
 ```
 
-**Cause**: Modern Python installations (especially Ubuntu 22.04+, Debian 12+) have externally-managed-environment protection that prevents direct pip installs to system directories.
+**Cause**: The install script needs sudo privileges to install system-wide.
 
-### **Solution**: Use the User-Friendly Installer
-
-**✅ Recommended Solution**:
+**Solution**:
 ```bash
-# Build and install with automatic handling
-make package-pip
-make install-pip-user
+# Use sudo for system-wide installation
+sudo ./scripts/install.sh
 ```
 
-This installer automatically:
-- Creates an isolated virtual environment
-- Installs system dependencies (GTK bindings, etc.)
-- Sets up desktop integration
-- Creates a launcher script
-- Handles all the complexity automatically
+### **Problem**: Uninstall script fails to remove all files
 
-### **Alternative Solutions**
+**Error Message**:
+```
+Failed to remove service for user
+```
 
-**For Developers (Manual Virtual Environment)**:
+**Cause**: Service files may be in use or have permission issues.
+
+**Solution**:
 ```bash
-# Create virtual environment
-python3 -m venv pomodoro-env
-source pomodoro-env/bin/activate
+# Stop all user services first
+systemctl --user stop pomodoro-lock.service
+systemctl --user disable pomodoro-lock.service
 
-# Install system dependencies
-sudo apt-get install python3-gi python3-notify2
+# Then run uninstall
+sudo ./scripts/uninstall.sh
 
-# Install the package
-pip install dist/pomodoro_lock-1.0.0-py3-none-any.whl
+# Clean up any remaining systemd state
+systemctl --user daemon-reload
+systemctl --user reset-failed
 ```
 
-**For System Administrators**:
+---
+
+## User Environment Auto-Setup Issues
+
+### **Problem**: First run doesn't set up user environment
+
+**Error Message**:
+```
+Failed to create user config directory
+```
+
+**Cause**: User doesn't have write permissions to their home directory.
+
+**Solution**:
 ```bash
-# Disable externally-managed-environment (not recommended)
-sudo mkdir -p /usr/lib/python3.13/site-packages
-sudo touch /usr/lib/python3.13/site-packages/pomodoro_lock-1.0.0-py3.13.egg-info
+# Check home directory permissions
+ls -la ~/
+
+# Fix permissions if needed
+chmod 755 ~/
+
+# Try running again
+pomodoro-lock
 ```
 
-### **Why This Happens**
+### **Problem**: Virtual environment creation fails
 
-Modern Python installations use PEP 668 to prevent conflicts between system package managers and pip. This is a security and stability feature, not a bug.
-
-### **Best Practices**
-
-1. **Always use `make install-pip-user`** for end-user installations
-2. **Use virtual environments** for development
-3. **Don't disable externally-managed-environment** unless absolutely necessary
-4. **Consider using system packages** (Debian packages) for system-wide installations
-
-## AppImage Build Issues
-
-### 1. AppStream Validation Errors
-
-**Problem**: AppImage build fails with AppStream validation errors:
+**Error Message**:
 ```
-✘ Validation failed: errors: 1, warnings: 1, infos: 1
-run_external: subprocess exited with status 3Failed to validate AppStream information with appstreamcli
+Failed to create virtual environment
 ```
 
-**Causes**:
-- Invalid license format in `appdata.xml`
-- Missing or incorrectly formatted developer information
-- Invalid categories in desktop file
-- Trailing spaces or invalid characters in metadata files
+**Cause**: Python venv module not available or disk space issues.
 
-**Solutions**:
-
-#### Option A: Fix AppStream Metadata (Recommended for Distribution)
-1. **Update license format** in `AppDir/pomodoro-lock.appdata.xml`:
-   ```xml
-   <project_license>GPL-3.0-or-later</project_license>
-   ```
-
-2. **Add proper developer information**:
-   ```xml
-   <developer>
-     <id>your-username</id>
-     <name>Your Name</name>
-   </developer>
-   ```
-
-3. **Use valid AppStream categories**:
-   ```xml
-   <categories>
-     <category>Utility</category>
-     <category>Office</category>
-   </categories>
-   ```
-
-4. **Clean up desktop file** - remove trailing spaces and invalid characters
-
-#### Option B: Bypass AppStream Validation (Quick Fix)
-1. **Comment out appdata.xml copying** in `scripts/build-appimage.sh`:
-   ```bash
-   # cp AppDir/pomodoro-lock.appdata.xml "$BUILD_DIR/AppDir/usr/share/metainfo/"
-   ```
-
-2. **Use --no-appstream flag** (if supported):
-   ```bash
-   "$APPIMAGETOOL" --no-appstream "$BUILD_DIR/AppDir" "$APPIMAGE_NAME"
-   ```
-
-### 2. Icon Issues
-
-**Problem**: Missing icon files or wrong icon format
-
-**Solutions**:
-1. **Ensure SVG icon exists** at `AppDir/usr/share/icons/hicolor/256x256/apps/pomodoro-lock.svg`
-2. **Copy SVG to AppDir root** for appimagetool:
-   ```bash
-   cp AppDir/usr/share/icons/hicolor/256x256/apps/pomodoro-lock.svg "$BUILD_DIR/AppDir/pomodoro-lock.svg"
-   ```
-3. **Remove PNG generation** if only using SVG icons
-
-### 3. Desktop File Validation Errors
-
-**Problem**: Desktop file has invalid format or characters
-
-**Common Issues**:
-- Trailing spaces after values
-- Invalid boolean values (should be `true`/`false`, not `True`/`False`)
-- Invalid categories
-- Missing required fields
-
-**Solution**: Clean desktop file format:
-```ini
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Pomodoro Lock
-Comment=Multi-display Pomodoro timer with screen overlay
-Exec=pomodoro-lock
-Icon=pomodoro-lock
-Terminal=false
-Categories=Utility;Office;
-Keywords=pomodoro;timer;productivity;focus;
-```
-
-### 4. AppImage Tool Execution Errors
-
-**Problem**: 
-```
-[appimagelauncher-binfmt-bypass/interpreter] ERROR: execv(...) failed
-```
-
-**Causes**:
-- Invalid command line arguments
-- Corrupted appimagetool download
-- Permission issues
-
-**Solutions**:
-1. **Check appimagetool help**:
-   ```bash
-   ./build-appimage/appimagetool --help
-   ```
-
-2. **Re-download appimagetool**:
-   ```bash
-   rm build-appimage/appimagetool
-   # Re-run build to download fresh copy
-   ```
-
-3. **Verify file permissions**:
-   ```bash
-   chmod +x build-appimage/appimagetool
-   ```
-
-### 5. Dependency Issues
-
-**Problem**: Missing system dependencies for PyGObject
-
-**Solution**: Install required packages:
+**Solution**:
 ```bash
-sudo apt-get install -y libcairo2-dev pkg-config libgirepository-2.0-dev gir1.2-gtk-3.0
+# Install python3-venv if missing
+sudo apt-get install python3-venv
+
+# Check disk space
+df -h
+
+# Try manual setup
+python3 -m venv ~/.local/share/pomodoro-lock/venv
 ```
 
-### 6. Python Package Installation Issues
+---
 
-**Problem**: Python dependencies fail to install
+## Single-Instance Enforcement Issues
 
-**Solutions**:
-1. **Use virtual environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install --target="$BUILD_DIR/AppDir/usr/lib/python3/dist-packages" psutil python-xlib notify2 PyGObject
-   ```
+### **Problem**: Multiple instances running despite single-instance protection
 
-2. **Check Python version compatibility**:
-   ```bash
-   python3 --version
-   ```
+**Error Message**:
+```
+Pomodoro Lock is already running
+```
 
-## Build Process Checklist
+**Cause**: Lock file not properly cleaned up from previous crash.
 
-### Before Building
-- [ ] SVG icon exists and is valid
-- [ ] Desktop file is properly formatted
-- [ ] System dependencies are installed
-- [ ] Python environment is ready
+**Solution**:
+```bash
+# Remove stale lock file
+rm -f ~/.local/share/pomodoro-lock/pomodoro-lock.pid
 
-### During Build
-- [ ] Check for AppStream validation errors
-- [ ] Verify icon copying to AppDir root
-- [ ] Confirm Python packages install successfully
-- [ ] Monitor appimagetool execution
+# Kill any remaining processes
+pkill -f pomodoro-lock
 
-### After Build
-- [ ] Test AppImage execution
-- [ ] Verify icon appears correctly
-- [ ] Check desktop integration
-- [ ] Test on different systems if possible
+# Start fresh
+pomodoro-lock
+```
+
+### **Problem**: Lock file permission issues
+
+**Error Message**:
+```
+Permission denied: .local/share/pomodoro-lock/pomodoro-lock.pid
+```
+
+**Cause**: Lock file owned by different user or wrong permissions.
+
+**Solution**:
+```bash
+# Fix ownership
+sudo chown -R $USER:$USER ~/.local/share/pomodoro-lock/
+
+# Fix permissions
+chmod 755 ~/.local/share/pomodoro-lock/
+chmod 644 ~/.local/share/pomodoro-lock/pomodoro-lock.pid
+```
+
+---
+
+## System Tray and Window Issues
+
+### **Problem**: Tray icon doesn't appear
+
+**Error Message**:
+```
+Failed to create system tray icon
+```
+
+**Cause**: Desktop environment doesn't support system tray or missing dependencies.
+
+**Solution**:
+```bash
+# Install system tray dependencies
+sudo apt-get install python3-gi gir1.2-appindicator3-0.1
+
+# Check desktop environment support
+echo $XDG_CURRENT_DESKTOP
+
+# For XFCE, install additional packages
+sudo apt-get install xfce4-appmenu-plugin
+```
+
+### **Problem**: Window doesn't restore from tray
+
+**Error Message**:
+```
+Window restoration failed
+```
+
+**Cause**: Window manager issues or GTK problems.
+
+**Solution**:
+```bash
+# Restart the application
+pkill -f pomodoro-lock
+pomodoro-lock
+
+# Check GTK theme issues
+export GTK_THEME=Adwaita
+pomodoro-lock
+```
+
+### **Problem**: Dialog for second instance doesn't show
+
+**Error Message**:
+```
+Dialog creation failed
+```
+
+**Cause**: GTK dialog dependencies missing or display issues.
+
+**Solution**:
+```bash
+# Install GTK dependencies
+sudo apt-get install python3-gi gir1.2-gtk-3.0
+
+# Check display
+echo $DISPLAY
+
+# Try with different display
+DISPLAY=:0 pomodoro-lock
+```
+
+---
+
+## Systemd User Service Issues
+
+### **Problem**: Service fails to start
+
+**Error Message**:
+```
+Failed to start pomodoro-lock.service
+```
+
+**Cause**: Service file issues or user systemd not enabled.
+
+**Solution**:
+```bash
+# Enable user systemd
+systemctl --user enable --now
+
+# Check service status
+systemctl --user status pomodoro-lock.service
+
+# View service logs
+journalctl --user -u pomodoro-lock.service
+
+# Reinstall service
+pomodoro-lock  # This will recreate the service file
+```
+
+### **Problem**: Service doesn't autostart
+
+**Error Message**:
+```
+Service not enabled for autostart
+```
+
+**Cause**: User systemd not properly configured or service not enabled.
+
+**Solution**:
+```bash
+# Enable user systemd
+loginctl enable-linger $USER
+
+# Enable the service
+systemctl --user enable pomodoro-lock.service
+
+# Check if enabled
+systemctl --user is-enabled pomodoro-lock.service
+```
+
+### **Problem**: Service file corruption
+
+**Error Message**:
+```
+Invalid service file format
+```
+
+**Cause**: Service file was corrupted or has syntax errors.
+
+**Solution**:
+```bash
+# Remove corrupted service file
+rm ~/.config/systemd/user/pomodoro-lock.service
+
+# Reload systemd
+systemctl --user daemon-reload
+
+# Run app to recreate service
+pomodoro-lock
+```
+
+---
+
+## Multi-User Environment Issues
+
+### **Problem**: Service conflicts between users
+
+**Error Message**:
+```
+Service already exists for different user
+```
+
+**Cause**: Service files from different users conflicting.
+
+**Solution**:
+```bash
+# Each user should have their own service
+# Check current user's service
+systemctl --user status pomodoro-lock.service
+
+# Ensure running as correct user
+whoami
+echo $USER
+```
+
+### **Problem**: Configuration conflicts
+
+**Error Message**:
+```
+Configuration file access denied
+```
+
+**Cause**: Users trying to access each other's config files.
+
+**Solution**:
+```bash
+# Each user has their own config
+ls -la ~/.local/share/pomodoro-lock/config.json
+
+# Fix permissions if needed
+chmod 600 ~/.local/share/pomodoro-lock/config.json
+```
+
+---
+
+## Configuration Issues
+
+### **Problem**: Configuration changes don't take effect
+
+**Error Message**:
+```
+Configuration not updated
+```
+
+**Cause**: Config file not writable or app not restarted.
+
+**Solution**:
+```bash
+# Check config file permissions
+ls -la ~/.local/share/pomodoro-lock/config.json
+
+# Make sure it's writable
+chmod 644 ~/.local/share/pomodoro-lock/config.json
+
+# Restart the application
+pkill -f pomodoro-lock
+pomodoro-lock
+```
+
+### **Problem**: Configuration file corruption
+
+**Error Message**:
+```
+Invalid JSON in configuration
+```
+
+**Cause**: Config file was corrupted or has syntax errors.
+
+**Solution**:
+```bash
+# Backup corrupted config
+cp ~/.local/share/pomodoro-lock/config.json ~/.local/share/pomodoro-lock/config.json.bak
+
+# Remove corrupted config
+rm ~/.local/share/pomodoro-lock/config.json
+
+# Run app to recreate default config
+pomodoro-lock
+```
+
+---
+
+## Dependency Issues
+
+### **Problem**: Missing Python dependencies
+
+**Error Message**:
+```
+ModuleNotFoundError: No module named 'psutil'
+```
+
+**Cause**: Virtual environment not activated or dependencies not installed.
+
+**Solution**:
+```bash
+# Activate virtual environment
+source ~/.local/share/pomodoro-lock/venv/bin/activate
+
+# Install dependencies
+pip install -r /usr/share/pomodoro-lock/requirements-crossplatform.txt
+
+# Or reinstall user environment
+rm -rf ~/.local/share/pomodoro-lock/venv
+pomodoro-lock  # This will recreate the venv
+```
+
+### **Problem**: System dependencies missing
+
+**Error Message**:
+```
+GTK not available
+```
+
+**Cause**: GTK development libraries not installed.
+
+**Solution**:
+```bash
+# Install GTK dependencies
+sudo apt-get install python3-gi gir1.2-gtk-3.0 libgtk-3-dev
+
+# Install notification dependencies
+sudo apt-get install libnotify-bin python3-notify2
+```
+
+---
 
 ## Common Commands
 
-### Debug AppImage Build
+### Debug Application
 ```bash
-# Check appimagetool version and options
-./build-appimage/appimagetool --help
+# Check if app is running
+ps aux | grep pomodoro-lock
 
-# Validate appdata.xml manually
-appstreamcli validate AppDir/pomodoro-lock.appdata.xml
+# Check lock file
+cat ~/.local/share/pomodoro-lock/pomodoro-lock.pid
 
-# Check desktop file syntax
-desktop-file-validate AppDir/pomodoro-lock.desktop
+# View application logs
+journalctl --user -f -u pomodoro-lock.service
 
-# List AppImage contents
-./build-appimage/appimagetool -l Pomodoro_Lock-1.0.0-x86_64.AppImage
+# Check service status
+systemctl --user status pomodoro-lock.service
 ```
 
-### Clean Build
+### Reset User Environment
 ```bash
-# Remove build artifacts
-rm -rf build-appimage/
-rm -f Pomodoro_Lock-*.AppImage
+# Stop the application
+pkill -f pomodoro-lock
 
-# Rebuild from scratch
-make package-appimage
+# Remove user environment
+rm -rf ~/.local/share/pomodoro-lock/
+
+# Restart to recreate
+pomodoro-lock
 ```
+
+### Clean Installation
+```bash
+# Uninstall completely
+sudo ./scripts/uninstall.sh
+
+# Remove any remaining files
+sudo rm -rf /usr/share/pomodoro-lock
+sudo rm -f /usr/bin/pomodoro-lock
+sudo rm -f /usr/bin/pomodoro-configure
+sudo rm -f /usr/bin/pomodoro-service
+
+# Reinstall
+sudo ./scripts/install.sh
+```
+
+---
 
 ## Prevention Tips
 
-1. **Use consistent icon formats** - Stick to SVG for scalability
-2. **Validate metadata early** - Test appdata.xml and desktop files before building
-3. **Keep dependencies minimal** - Only include necessary Python packages
-4. **Test on clean systems** - Verify AppImage works on fresh installations
-5. **Document changes** - Keep track of what fixes work for future reference
+1. **Always use sudo for install/uninstall** - System-wide installation requires root privileges
+2. **Check user systemd** - Ensure user systemd is enabled before using services
+3. **Monitor service logs** - Use `journalctl --user` to debug service issues
+4. **Keep config files backed up** - Backup important configurations
+5. **Test multi-user scenarios** - Verify isolation between users
+6. **Check desktop environment compatibility** - Some DEs have limited tray support
+
+---
 
 ## Resources
 
-- [AppImage Documentation](https://docs.appimage.org/)
-- [AppStream Specification](https://www.freedesktop.org/software/appstream/docs/)
-- [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html)
-- [AppImageKit Repository](https://github.com/AppImage/AppImageKit) 
+- [Systemd User Services](https://wiki.archlinux.org/title/Systemd/User)
+- [GTK Documentation](https://docs.gtk.org/)
+- [Python Virtual Environments](https://docs.python.org/3/library/venv.html)
+- [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry-spec/) 

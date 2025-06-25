@@ -1,6 +1,6 @@
 # Pomodoro Lock
 
-A robust, cross-platform Pomodoro timer with system tray integration and per-user systemd service. Designed for system-wide installation, single-instance enforcement, and seamless user experience.
+A robust, cross-platform Pomodoro timer with system tray integration, multi-display support, and per-user systemd service. Designed for system-wide installation, single-instance enforcement, and seamless user experience.
 
 > **⚠️ Note: Windows version is currently not stable and may have issues. Linux version is fully stable and recommended for production use.**
 
@@ -9,9 +9,11 @@ A robust, cross-platform Pomodoro timer with system tray integration and per-use
 - Per-user config and venv auto-setup on first run
 - Single instance per user; launching again shows a dialog and exits
 - Tray icon for restoring the timer window
-- Modern GTK/Tkinter UI
+- Modern GTK/Tkinter UI with multi-display support
+- Fullscreen break overlays on all connected monitors
 - Per-user systemd service, managed automatically
 - Install/uninstall scripts clean up all files and services
+- Robust error handling and UTF-8 encoding safety
 
 ## Install
 - `sudo ./scripts/install.sh` or use the Debian package
@@ -22,6 +24,7 @@ A robust, cross-platform Pomodoro timer with system tray integration and per-use
 - Click the tray icon to restore the window if closed
 - Use `pomodoro-configure` for settings
 - Use `pomodoro-service` to manage the user service
+- Break overlays automatically appear on all connected displays
 
 ## See `docs/README.md` for full details.
 

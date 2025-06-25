@@ -5,14 +5,14 @@ This project uses GitHub Actions to automatically build and release packages whe
 ## How It Works
 
 1. **Automatic Triggers:**
-   - When you push a tag starting with `v*` (e.g., `v1.0.0`)
+   - When you push a tag starting with `v*` (e.g., `v1.3.7`)
    - When you create a pull request
    - Manual trigger via GitHub Actions UI
 
 2. **Build Process:**
-   - **Python Package**: Builds wheel and source distribution for multiple Python versions
    - **Debian Package**: Builds `.deb` package for Ubuntu/Debian systems
-   - **Release**: Creates GitHub release with all packages attached
+   - **Windows Executable**: Builds `.exe` file for Windows systems
+   - **Release**: Creates GitHub release with both packages attached
 
 ## Usage
 
@@ -22,10 +22,10 @@ This project uses GitHub Actions to automatically build and release packages whe
 2. **Commit and push** your changes
 3. **Create a release**:
    ```bash
-   make github-release VERSION=1.0.0
+   git tag v1.3.8
+   git push origin v1.3.8
    ```
    This will:
-   - Create a git tag `v1.0.0`
    - Push the tag to GitHub
    - Trigger the build workflow
    - Create a GitHub release with packages
@@ -34,65 +34,111 @@ This project uses GitHub Actions to automatically build and release packages whe
 
 Test the build process locally:
 ```bash
-make github-test
-```
+# Test Debian package build
+dpkg-buildpackage -b -us -uc
 
-Or build packages manually:
-```bash
-make package-pip
-make package-deb
+# Test Windows executable build (requires Windows or Wine)
+pip install pyinstaller
+pyinstaller pomodoro-lock.spec
 ```
 
 ## Workflow Files
 
 - **`.github/workflows/build.yml`**: Main build and release workflow
-- **`.github/workflows/test.yml`**: Simple test workflow for pull requests
+  - Builds Debian package on Ubuntu
+  - Builds Windows executable on Windows
+  - Creates GitHub release with artifacts
+- **`.github/workflows/test.yml`**: Test workflow for pull requests
+  - Runs CI tests
+  - Tests Python package build
+  - Tests Debian package build
 
 ## Package Outputs
 
 The workflows will create:
 
-### Python Package (pip)
-- `pomodoro-lock-x.y.z.tar.gz` (source distribution)
-- `pomodoro_lock-x.y.z-py3-none-any.whl` (wheel distribution)
-
 ### Debian Package
-- `pomodoro-lock_x.y.z-1_all.deb` (Debian package)
+- `pomodoro-lock_x.y.z-1_all.deb` (Debian package for system-wide installation)
 
-### AppImage
-- `Pomodoro_Lock-x.y.z-x86_64.AppImage` (AppImage for Linux)
+### Windows Executable
+- `pomodoro-lock.exe` (Standalone Windows executable)
 
 ## Requirements
 
 - GitHub repository with Actions enabled
-- Proper `setup.py` for Python packaging
 - Proper `debian/` directory for Debian packaging
-- Version tags following semantic versioning (e.g., `v1.0.0`)
+- `pomodoro-lock.spec` file for PyInstaller Windows build
+- Version tags following semantic versioning (e.g., `v1.3.7`)
+
+## Installation Methods
+
+### Linux (Debian/Ubuntu)
+```bash
+# Download the .deb file from GitHub releases
+sudo dpkg -i pomodoro-lock_x.y.z-1_all.deb
+
+# Or install manually
+sudo ./scripts/install.sh
+```
+
+### Windows
+```bash
+# Download the .exe file from GitHub releases
+# Run pomodoro-lock.exe directly
+```
 
 ## Troubleshooting
 
 ### Build Fails
 1. Check the Actions tab in your GitHub repository
 2. Review the build logs for specific errors
-3. Test locally with `make package-pip` and `make package-deb`
+3. Test locally with `dpkg-buildpackage -b -us -uc`
 
 ### Release Not Created
-1. Ensure the tag starts with `v` (e.g., `v1.0.0`)
+1. Ensure the tag starts with `v` (e.g., `v1.3.7`)
 2. Check that the workflow completed successfully
 3. Verify GitHub token permissions
 
 ### Package Issues
-1. Review `setup.py` for Python package configuration
-2. Review `debian/` files for Debian package configuration
+1. Review `debian/` files for Debian package configuration
+2. Review `pomodoro-lock.spec` for Windows executable configuration
 3. Test packaging locally before creating a release
+
+### Windows Build Issues
+1. Check PyInstaller configuration in `pomodoro-lock.spec`
+2. Verify all dependencies are included
+3. Test the executable on a clean Windows system
+
+## Workflow Details
+
+### Build Workflow (build.yml)
+- **Ubuntu Job**: Builds Debian package with system dependencies
+- **Windows Job**: Builds executable with PyInstaller
+- **Release Job**: Creates GitHub release with both artifacts
+
+### Test Workflow (test.yml)
+- Runs CI tests (`tests/test-ci.py`)
+- Tests Python package build
+- Tests Debian package build
+- Runs on pull requests to main/master
 
 ## Customization
 
 You can modify the workflows to:
-- Add more Python versions
-- Include additional package formats
+- Add more Linux distributions
+- Include additional Windows configurations
 - Add testing steps
 - Customize release notes
 - Add deployment to package repositories
+
+## Manual Workflow Trigger
+
+To manually trigger the build workflow:
+1. Go to GitHub → Actions → Build Packages
+2. Click "Run workflow"
+3. Select branch (usually `main`)
+4. Click "Run workflow"
+
+This will build both Debian and Windows packages without creating a release.
 
 See the GitHub Actions documentation for more details: https://docs.github.com/en/actions 

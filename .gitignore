@@ -123,6 +123,7 @@ logs/
 temp/
 tmp/
 CONTINUE_PROMPT.txt
+MAINTAINER_CONTEXT.md
 
 # Configuration (user-specific)
 ~/.local/share/pomodoro-lock/
