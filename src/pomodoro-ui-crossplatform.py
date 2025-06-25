@@ -203,20 +203,27 @@ class PomodoroTimer:
             logging.info("Received shutdown signal")
             self.quit_application()
         
+        def show_window_handler(signum, frame):
+            """Handle SIGUSR1 to show timer window"""
+            logging.info("Received show window signal")
+            if hasattr(self, 'timer_window'):
+                self.show_timer()
+        
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
         
         if SYSTEM == "linux":
             signal.signal(signal.SIGHUP, signal_handler)
+            signal.signal(signal.SIGUSR1, show_window_handler)
     
     def _acquire_lock(self):
         """Acquire file lock to prevent multiple instances"""
         return self.file_lock.acquire_lock()
     
     def _show_already_running_dialog(self):
-        """Show dialog when another instance is running"""
+        """Show dialog when another instance is running and bring existing instance to front"""
         if SYSTEM == "linux":
-            # Use GTK dialog
+            # Use GTK dialog with option to show existing instance
             import gi
             gi.require_version('Gtk', '3.0')
             from gi.repository import Gtk
@@ -225,22 +232,86 @@ class PomodoroTimer:
                 parent=None,
                 flags=Gtk.DialogFlags.MODAL,
                 type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
+                buttons=Gtk.ButtonsType.OK_CANCEL,
                 text="Pomodoro Lock is already running"
             )
-            dialog.run()
+            dialog.format_secondary_text("Would you like to show the existing instance?")
+            
+            # Add custom button for showing existing instance
+            dialog.add_button("Show Existing", Gtk.ResponseType.YES)
+            dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            
+            response = dialog.run()
             dialog.destroy()
+            
+            if response == Gtk.ResponseType.YES:
+                # Try to bring existing instance to front
+                self._bring_existing_instance_to_front()
         else:
-            # Use Tkinter dialog
+            # Use Tkinter dialog with option to show existing instance
             import tkinter as tk
             from tkinter import messagebox
             
             root = tk.Tk()
             root.withdraw()  # Hide the main window
-            messagebox.showinfo("Pomodoro Lock", "Pomodoro Lock is already running")
+            
+            result = messagebox.askyesno(
+                "Pomodoro Lock", 
+                "Pomodoro Lock is already running.\n\nWould you like to show the existing instance?"
+            )
+            
+            if result:
+                # Try to bring existing instance to front
+                self._bring_existing_instance_to_front()
+            
             root.destroy()
         
-        sys.exit(1)
+        sys.exit(0)  # Exit gracefully instead of error code 1
+    
+    def _bring_existing_instance_to_front(self):
+        """Try to bring the existing instance to the foreground"""
+        try:
+            # Get PID from lock file
+            if self.lock_file.exists():
+                with open(self.lock_file, 'r') as f:
+                    pid_str = f.read().strip()
+                    if pid_str:
+                        pid = int(pid_str)
+                        
+                        # On Linux, try to send SIGUSR1 to bring window to front
+                        if SYSTEM == "linux":
+                            try:
+                                os.kill(pid, signal.SIGUSR1)
+                                logging.info(f"Sent SIGUSR1 to existing instance (PID: {pid})")
+                            except OSError as e:
+                                logging.warning(f"Failed to signal existing instance: {e}")
+                        
+                        # On Windows, try to use win32api to bring window to front
+                        elif SYSTEM == "windows":
+                            try:
+                                import win32gui
+                                import win32con
+                                
+                                # Find window by process ID and bring to front
+                                def enum_windows_callback(hwnd, pid):
+                                    try:
+                                        _, found_pid = win32gui.GetWindowThreadProcessId(hwnd)
+                                        if found_pid == pid:
+                                            win32gui.SetForegroundWindow(hwnd)
+                                            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                                            return False  # Stop enumeration
+                                    except:
+                                        pass
+                                    return True
+                                
+                                win32gui.EnumWindows(enum_windows_callback, pid)
+                                logging.info(f"Attempted to bring existing instance to front (PID: {pid})")
+                            except ImportError:
+                                logging.warning("win32gui not available for bringing window to front")
+                            except Exception as e:
+                                logging.warning(f"Failed to bring window to front: {e}")
+        except Exception as e:
+            logging.warning(f"Failed to bring existing instance to front: {e}")
     
     def start(self):
         """Start the Pomodoro timer"""

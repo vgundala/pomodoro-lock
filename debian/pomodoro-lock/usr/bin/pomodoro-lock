@@ -159,12 +159,10 @@ start_ui() {
     echo "Starting Pomodoro Lock UI..."
     echo "Application: $MAIN_SCRIPT"
     
-    # Check if already running
+    # Check if already running - but don't kill it, let the app handle it
     if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-        echo "Warning: Pomodoro Lock is already running"
-        echo "Stopping existing instance..."
-        pkill -f "pomodoro-ui-crossplatform.py"
-        sleep 2
+        echo "Note: Pomodoro Lock appears to be already running"
+        echo "The application will handle multiple instance detection"
     fi
     
     # Start the application

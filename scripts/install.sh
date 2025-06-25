@@ -154,11 +154,10 @@ cd ~/.local/share/pomodoro-lock
 case "${1:-ui}" in
     "ui"|"start")
         echo "Starting Pomodoro Lock UI..."
-        # Check if already running and stop if needed
+        # Check if already running - but don't kill it, let the app handle it
         if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-            echo "Stopping existing instance..."
-            pkill -f "pomodoro-ui-crossplatform.py"
-            sleep 1
+            echo "Note: Pomodoro Lock appears to be already running"
+            echo "The application will handle multiple instance detection"
         fi
         exec python3 pomodoro-ui-crossplatform.py
         ;;
