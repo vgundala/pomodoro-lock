@@ -122,6 +122,7 @@ pomodoro.log
 logs/
 temp/
 tmp/
+CONTINUE_PROMPT.txt
 
 # Configuration (user-specific)
 ~/.local/share/pomodoro-lock/
