@@ -3,6 +3,8 @@
 ## Overview
 Pomodoro Lock is a cross-platform, single-instance Pomodoro timer with a tray icon and systemd user service integration. It is designed for robust, multi-user, system-wide installation and easy use.
 
+> **⚠️ Note: Windows version is currently not stable and may have issues. Linux version is fully stable and recommended for production use.**
+
 ---
 
 ## Key Features (as of v1.3.7+)
