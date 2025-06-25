@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" width="256" height="256" viewBox="0 0 256 256">
+  <metadata>
+    <dc:title>Pomodoro Lock Logo</dc:title>
+    <dc:creator>Vinay Gundala</dc:creator>
+    <dc:rights>Copyright (c) 2024 Vinay Gundala. All rights reserved.</dc:rights>
+    <dc:date>2024</dc:date>
+  </metadata>
   <defs>
     <radialGradient id="fleshGradient" cx="50%" cy="50%" r="50%">
       <stop offset="0%" style="stop-color:#fddde2;" />
