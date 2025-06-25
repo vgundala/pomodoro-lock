@@ -16,13 +16,9 @@ icon_file = current_dir / 'pomodoro-lock-24.png'
 # Platform-specific settings
 is_windows = sys.platform.startswith('win')
 
-# Define the analysis
-a = Analysis(
-    [str(main_script)],
-    pathex=[str(current_dir)],
-    binaries=[],
-    datas=[],
-    hiddenimports=[
+# Platform-specific hidden imports
+if is_windows:
+    hidden_imports = [
         # Core modules
         'psutil',
         'json',
@@ -45,26 +41,57 @@ a = Analysis(
         'gui.__init__',
         
         # Windows-specific imports
-        'win10toast' if is_windows else None,
-        'pystray' if is_windows else None,
-        'PIL' if is_windows else None,
-        'win32api' if is_windows else None,
-        'win32con' if is_windows else None,
-        'win32gui' if is_windows else None,
-        'win32process' if is_windows else None,
+        'win10toast',
+        'pystray',
+        'PIL',
+        'win32api',
+        'win32con',
+        'win32gui',
+        'win32process',
+    ]
+else:
+    hidden_imports = [
+        # Core modules
+        'psutil',
+        'json',
+        'threading',
+        'logging',
+        'time',
+        'signal',
+        'pathlib',
+        
+        # Platform abstraction
+        'platform_abstraction',
+        'platform_abstraction.linux',
+        'platform_abstraction.windows',
+        'platform_abstraction.__init__',
+        
+        # GUI modules
+        'gui',
+        'gui.gtk_ui',
+        'gui.tkinter_ui',
+        'gui.__init__',
         
         # Linux-specific imports (these are usually system packages)
-        'gi' if not is_windows else None,
-        'gi.repository' if not is_windows else None,
-        'gi.repository.Gtk' if not is_windows else None,
-        'gi.repository.GLib' if not is_windows else None,
-        'gi.repository.Notify' if not is_windows else None,
-        'gi.repository.AppIndicator3' if not is_windows else None,
-        'Xlib' if not is_windows else None,
-        'Xlib.display' if not is_windows else None,
-        'Xlib.ext.randr' if not is_windows else None,
-        'notify2' if not is_windows else None,
-    ],
+        'gi',
+        'gi.repository',
+        'gi.repository.Gtk',
+        'gi.repository.GLib',
+        'gi.repository.Notify',
+        'gi.repository.AppIndicator3',
+        'Xlib',
+        'Xlib.display',
+        'Xlib.ext.randr',
+        'notify2',
+    ]
+
+# Define the analysis
+a = Analysis(
+    [str(main_script)],
+    pathex=[str(current_dir)],
+    binaries=[],
+    datas=[],
+    hiddenimports=hidden_imports,
     hookspath=[str(current_dir / 'hooks')],
     hooksconfig={},
     runtime_hooks=[],
@@ -74,9 +101,6 @@ a = Analysis(
     cipher=None,
     noarchive=False,
 )
-
-# Remove None values from hiddenimports
-a.hiddenimports = [imp for imp in a.hiddenimports if imp is not None]
 
 # Platform-specific data files
 if is_windows:
