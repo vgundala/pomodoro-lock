@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Pomodoro Lock Installer - Service-Based Architecture
-# This script installs Pomodoro Lock using the new service/UI separation
+# Pomodoro Lock Installer - System-wide Installation
+# This script installs Pomodoro Lock to system-wide locations
 # Copyright © 2024 Vinay Gundala (vg@ivdata.dev)
 
 set -e
@@ -13,32 +13,32 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Get current user info
-CURRENT_USER=$(whoami)
-USER_ID=$(id -u)
+# Installation paths
+INSTALL_DIR="/usr/share/pomodoro-lock"
+BIN_DIR="/usr/bin"
+DESKTOP_DIR="/usr/share/applications"
+ICON_DIR="/usr/share/icons/hicolor/scalable/apps"
 
-echo -e "${BLUE}Pomodoro Lock Installer - Service-Based Architecture${NC}"
-echo "=========================================================="
+echo -e "${BLUE}Pomodoro Lock Installer - System-wide Installation${NC}"
+echo "======================================================="
 echo ""
 
 # Check if running as root
-if [ "$EUID" -eq 0 ]; then
-    echo -e "${RED}Error: This installer should not be run as root.${NC}"
-    echo "Please run as a regular user."
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}Error: This installer must be run as root for system-wide installation.${NC}"
+    echo "Please run: sudo $0"
     exit 1
 fi
 
-echo -e "${GREEN}Installing for user: $CURRENT_USER${NC}"
+echo -e "${GREEN}Installing Pomodoro Lock system-wide...${NC}"
 echo ""
 
 # Check system dependencies
 echo -e "${BLUE}Checking system dependencies...${NC}"
-EXISTING_COUNT=0
 
 # Check Python 3
 if command -v python3 >/dev/null 2>&1; then
     echo -e "${GREEN}✅ Python 3: Available ($(python3 --version))${NC}"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
 else
     echo -e "${RED}❌ Python 3: Not found${NC}"
     echo "Please install Python 3: sudo apt-get install python3"
@@ -48,245 +48,117 @@ fi
 # Check GTK
 if python3 -c "import gi; gi.require_version('Gtk', '3.0'); from gi.repository import Gtk" 2>/dev/null; then
     echo -e "${GREEN}✅ GTK: Available${NC}"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
 else
     echo -e "${RED}❌ GTK: Not found${NC}"
     echo "Please install GTK: sudo apt-get install python3-gi"
     exit 1
 fi
 
-# Check psutil
-if python3 -c "import psutil" 2>/dev/null; then
-    echo -e "${GREEN}✅ psutil: Available${NC}"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo -e "${YELLOW}⚠️  psutil: Not found (will install in venv)${NC}"
-fi
-
-# Check notify2
-if python3 -c "import notify2" 2>/dev/null; then
-    echo -e "${GREEN}✅ notify2: Available${NC}"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo -e "${YELLOW}⚠️  notify2: Not found (will install in venv)${NC}"
-fi
-
-# Check python-xlib
-if python3 -c "import Xlib" 2>/dev/null; then
-    echo -e "${GREEN}✅ python-xlib: Available${NC}"
-    EXISTING_COUNT=$(expr $EXISTING_COUNT + 1)
-else
-    echo -e "${YELLOW}⚠️  python-xlib: Not found (will install in venv)${NC}"
-fi
-
 # Check virtual environment support
 if python3 -m venv --help >/dev/null 2>&1; then
-    VENV_AVAILABLE=true
     echo -e "${GREEN}✅ python3-venv: Available${NC}"
 else
-    VENV_AVAILABLE=false
     echo -e "${RED}❌ python3-venv: Not found${NC}"
     echo "Please install: sudo apt-get install python3-venv"
     exit 1
 fi
 
-# Create necessary directories
-echo ""
-echo -e "${BLUE}📁 Creating directories...${NC}"
-mkdir -p ~/.local/share/pomodoro-lock/{config,scripts}
-mkdir -p ~/.local/bin
-
-# Create virtual environment
-echo ""
-echo -e "${BLUE}🐍 Creating virtual environment...${NC}"
-python3 -m venv ~/.local/share/pomodoro-lock/venv
-
-echo -e "${BLUE}📦 Installing packages in virtual environment...${NC}"
-source ~/.local/share/pomodoro-lock/venv/bin/activate
-pip install --upgrade pip
-pip install psutil python-xlib notify2 dbus-python
-
-# Copy system GTK bindings to virtual environment if needed
-VENV_SITE_PACKAGES="$HOME/.local/share/pomodoro-lock/venv/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages"
-
-# Copy gi module from dist-packages if it exists
-SYSTEM_GI_PATH="/usr/lib/python3/dist-packages/gi"
-if [ -d "$SYSTEM_GI_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/gi" ]; then
-    echo -e "${BLUE}📋 Copying GTK bindings to virtual environment...${NC}"
-    cp -r "$SYSTEM_GI_PATH" "$VENV_SITE_PACKAGES/"
-    # Also copy any .so files that gi depends on
-    if [ -f "$SYSTEM_GI_PATH/_gi.so" ]; then
-        cp "$SYSTEM_GI_PATH/_gi.so" "$VENV_SITE_PACKAGES/gi/"
+# Check if already installed
+if [ -d "$INSTALL_DIR" ]; then
+    echo -e "${YELLOW}⚠️  Pomodoro Lock appears to be already installed in $INSTALL_DIR${NC}"
+    read -p "Do you want to reinstall? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled."
+        exit 0
     fi
-    if [ -f "$SYSTEM_GI_PATH/_gi_cairo.so" ]; then
-        cp "$SYSTEM_GI_PATH/_gi_cairo.so" "$VENV_SITE_PACKAGES/gi/"
-    fi
+    echo -e "${BLUE}Removing existing installation...${NC}"
+    rm -rf "$INSTALL_DIR"
 fi
 
-# Copy notify2 module from dist-packages if it exists
-SYSTEM_NOTIFY2_PATH="/usr/lib/python3/dist-packages/notify2"
-if [ -d "$SYSTEM_NOTIFY2_PATH" ] && [ ! -d "$VENV_SITE_PACKAGES/notify2" ]; then
-    echo -e "${BLUE}📋 Copying notify2 to virtual environment...${NC}"
-    cp -r "$SYSTEM_NOTIFY2_PATH" "$VENV_SITE_PACKAGES/"
-fi
+# Create installation directories
+echo ""
+echo -e "${BLUE}📁 Creating installation directories...${NC}"
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/config"
+mkdir -p "$INSTALL_DIR/scripts"
+mkdir -p "$INSTALL_DIR/systemd"
+mkdir -p "$INSTALL_DIR/docs"
+mkdir -p "$INSTALL_DIR/tests"
 
 # Copy source files
-cp src/pomodoro-ui-crossplatform.py ~/.local/share/pomodoro-lock/
-cp -r src/platform_abstraction/ ~/.local/share/pomodoro-lock/
-cp -r src/gui/ ~/.local/share/pomodoro-lock/
-cp scripts/configure-pomodoro.py ~/.local/share/pomodoro-lock/
+echo -e "${BLUE}📋 Copying application files...${NC}"
+cp src/pomodoro-ui-crossplatform.py "$INSTALL_DIR/"
+cp -r src/platform_abstraction/ "$INSTALL_DIR/"
+cp -r src/gui/ "$INSTALL_DIR/"
+cp scripts/configure-pomodoro.py "$INSTALL_DIR/scripts/"
+cp config/config.json "$INSTALL_DIR/config/"
+cp config/pomodoro-lock.service "$INSTALL_DIR/systemd/"
+cp pomodoro-lock.svg "$INSTALL_DIR/"
+cp README.md "$INSTALL_DIR/docs/"
+cp LICENSE "$INSTALL_DIR/docs/"
 
-if [ ! -f ~/.local/share/pomodoro-lock/config/config.json ]; then
-    echo -e "${BLUE}📄 Creating default configuration...${NC}"
-    cp config/config.json ~/.local/share/pomodoro-lock/config/
-fi
+# Copy test files
+echo -e "${BLUE}🧪 Copying test files...${NC}"
+cp -r tests/* "$INSTALL_DIR/tests/" 2>/dev/null || true
 
-chmod +x ~/.local/share/pomodoro-lock/configure-pomodoro.py
+# Make scripts executable
+chmod +x "$INSTALL_DIR/scripts/configure-pomodoro.py"
 
 # Create launcher scripts
 echo -e "${BLUE}🔧 Creating launcher scripts...${NC}"
-cat > ~/.local/bin/pomodoro-lock << 'EOF'
-#!/bin/bash
-# Pomodoro Lock Launcher
-source ~/.local/share/pomodoro-lock/venv/bin/activate
-cd ~/.local/share/pomodoro-lock
 
-case "${1:-ui}" in
-    "ui"|"start")
-        echo "Starting Pomodoro Lock UI..."
-        # Check if already running and stop if needed
-        if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-            echo "Stopping existing instance..."
-            pkill -f "pomodoro-ui-crossplatform.py"
-            sleep 1
-        fi
-        exec python3 pomodoro-ui-crossplatform.py
-        ;;
-    "service")
-        echo "Starting Pomodoro Lock via systemd service..."
-        systemctl --user start pomodoro-lock.service
-        ;;
-    "stop")
-        echo "Stopping Pomodoro Lock UI..."
-        pkill -f "pomodoro-ui-crossplatform.py"
-        systemctl --user stop pomodoro-lock.service 2>/dev/null || true
-        ;;
-    "status")
-        echo "UI status:"
-        if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-            echo "Pomodoro Lock UI is running"
-        else
-            echo "Pomodoro Lock UI is not running"
-        fi
-        echo ""
-        echo "Service status:"
-        systemctl --user status pomodoro-lock.service --no-pager -l
-        ;;
-    "enable")
-        echo "Enabling autostart..."
-        systemctl --user enable pomodoro-lock.service
-        ;;
-    "disable")
-        echo "Disabling autostart..."
-        systemctl --user disable pomodoro-lock.service
-        ;;
-    "help"|"-h"|"--help")
-        echo "Pomodoro Lock Launcher"
-        echo "====================="
-        echo ""
-        echo "Usage: $0 [command]"
-        echo ""
-        echo "Commands:"
-        echo "  ui      - Start UI (default, single instance protected)"
-        echo "  start   - Alias for ui"
-        echo "  service - Start via systemd service"
-        echo "  stop    - Stop the UI and service"
-        echo "  status  - Show UI and service status"
-        echo "  enable  - Enable autostart"
-        echo "  disable - Disable autostart"
-        echo "  help    - Show this help"
-        echo ""
-        echo "Installation location: ~/.local/share/pomodoro-lock"
-        echo "Service file: ~/.config/systemd/user/pomodoro-lock.service"
-        ;;
-    *)
-        echo "Unknown command: $1"
-        echo "Use '$0 help' for usage information."
-        exit 1
-        ;;
-esac
+# Copy the launcher scripts from debian directory
+cp debian/launcher.sh "$BIN_DIR/pomodoro-lock"
+cp debian/pomodoro-lock/usr/bin/pomodoro-configure "$BIN_DIR/pomodoro-configure"
+cp debian/pomodoro-lock/usr/bin/pomodoro-service "$BIN_DIR/pomodoro-service"
+
+# Make launcher scripts executable
+chmod +x "$BIN_DIR/pomodoro-lock"
+chmod +x "$BIN_DIR/pomodoro-configure"
+chmod +x "$BIN_DIR/pomodoro-service"
+
+# Create desktop file
+echo -e "${BLUE}🖥️  Creating desktop launcher...${NC}"
+cat > "$DESKTOP_DIR/pomodoro-lock.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pomodoro Lock
+Comment=Focus timer with screen overlay
+Exec=/usr/bin/pomodoro-lock ui
+Icon=pomodoro-lock
+Terminal=false
+Categories=Utility;TimeManagement;
+Keywords=pomodoro;timer;focus;productivity;
 EOF
 
-cat > ~/.local/bin/pomodoro-configure << 'EOF'
-#!/bin/bash
-source ~/.local/share/pomodoro-lock/venv/bin/activate
-cd ~/.local/share/pomodoro-lock
-exec python3 configure-pomodoro.py "$@"
-EOF
-
-chmod +x ~/.local/bin/pomodoro-lock
-chmod +x ~/.local/bin/pomodoro-configure
-
-# Install icon file
-echo ""
-echo -e "${BLUE}🔧 Installing application icon...${NC}"
-ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+# Install icon
+echo -e "${BLUE}🎨 Installing application icon...${NC}"
 mkdir -p "$ICON_DIR"
-cp pomodoro-lock.svg "$ICON_DIR/pomodoro-lock.svg"
+cp pomodoro-lock.svg "$ICON_DIR/"
 
 # Update icon cache
-echo "Updating icon cache..."
-gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" || true
+echo -e "${BLUE}🔄 Updating icon cache...${NC}"
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 
-# Install desktop file for application menu
-echo ""
-echo -e "${BLUE}🔧 Installing application launcher...${NC}"
-mkdir -p ~/.local/share/applications/
-cp debian/pomodoro-lock.desktop ~/.local/share/applications/pomodoro-lock.desktop
-# Update Exec to point to the user's local bin
-sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/pomodoro-lock ui|" ~/.local/share/applications/pomodoro-lock.desktop
-# Update Icon to use the installed icon name
-sed -i "s|^Icon=.*|Icon=pomodoro-lock|" ~/.local/share/applications/pomodoro-lock.desktop
-
-# Setup systemd service
-echo ""
-echo -e "${BLUE}🔧 Installing systemd service...${NC}"
-mkdir -p ~/.config/systemd/user/
-
-# Copy the service template and replace %h with the actual home directory
-cp config/pomodoro-lock.service ~/.config/systemd/user/pomodoro-lock.service
-sed -i "s|%h|$HOME|g" ~/.config/systemd/user/pomodoro-lock.service
-
-# Final output
-echo ""
-echo -e "${GREEN}🎉 Installation Complete!${NC}"
-echo "========================"
 echo ""
 echo -e "${GREEN}✅ Pomodoro Lock has been installed successfully!${NC}"
 echo ""
-echo -e "${BLUE}📋 UI Management:${NC}"
-echo "  Start:   systemctl --user start pomodoro-lock.service"
-echo "  Stop:    systemctl --user stop pomodoro-lock.service"
-echo "  Status:  systemctl --user status pomodoro-lock.service"
-echo "  Logs:    journalctl --user -u pomodoro-lock.service -f"
+echo -e "${BLUE}📁 Installation location: $INSTALL_DIR${NC}"
+echo -e "${BLUE}🔧 Executables: $BIN_DIR/pomodoro-lock${NC}"
+echo -e "${BLUE}🖥️  Desktop launcher: $DESKTOP_DIR/pomodoro-lock.desktop${NC}"
 echo ""
-echo -e "${BLUE}🔧 Convenience Commands:${NC}"
-echo "  UI:      pomodoro-lock ui"
-echo "  Config:  pomodoro-configure"
+echo -e "${GREEN}🚀 To start the application:${NC}"
+echo "   pomodoro-lock"
 echo ""
-echo -e "${BLUE}📁 Files:${NC}"
-echo "  Config:  ~/.local/share/pomodoro-lock/config/config.json"
-echo "  Venv:    ~/.local/share/pomodoro-lock/venv/"
+echo -e "${GREEN}📋 To configure:${NC}"
+echo "   pomodoro-configure"
 echo ""
-echo -e "${BLUE}🏗️  Architecture:${NC}"
-echo "  - Standalone UI: Complete timer application with overlays"
-echo "  - Auto-start: Will be enabled automatically on first launch"
-echo "  - Single instance: ✅ PROTECTED - Only one instance will run"
+echo -e "${GREEN}⚙️  To manage service:${NC}"
+echo "   pomodoro-service"
 echo ""
-echo -e "${YELLOW}⚠️  Important Notes:${NC}"
-echo "  - Add ~/.local/bin to your PATH if not already there:"
-echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+echo -e "${YELLOW}📝 Note: Each user's environment will be set up automatically on first run.${NC}"
+echo -e "${YELLOW}   This includes virtual environment, configuration, and systemd service.${NC}"
 echo ""
-echo -e "${GREEN}🚀 Run 'pomodoro-lock' to start the app and enable autostart!${NC}"
-echo ""
-echo -e "${BLUE}❓ Need help? Check: https://github.com/vgundala/pomodoro-lock#readme${NC}" 
+echo -e "${GREEN}🎉 Installation complete!${NC}" 

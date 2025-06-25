@@ -1,8 +1,27 @@
-# Pomodoro Lock - Cross-Platform Timer with Screen Overlay
+# Pomodoro Lock
 
-A comprehensive Pomodoro timer application that helps you maintain focus during work sessions and enforces breaks with full-screen overlays across all connected displays. **Now supports both Linux and Windows!**
+A robust, cross-platform Pomodoro timer with system tray integration and per-user systemd service. Designed for system-wide installation, single-instance enforcement, and seamless user experience.
 
-**Copyright © 2024 Vinay Gundala (vg@ivdata.dev)**
+## Highlights
+- System-wide install to `/usr/share/pomodoro-lock` and `/usr/bin/`
+- Per-user config and venv auto-setup on first run
+- Single instance per user; launching again shows a dialog and exits
+- Tray icon for restoring the timer window
+- Modern GTK/Tkinter UI
+- Per-user systemd service, managed automatically
+- Install/uninstall scripts clean up all files and services
+
+## Install
+- `sudo ./scripts/install.sh` or use the Debian package
+- Uninstall with `sudo ./scripts/uninstall.sh` or `sudo dpkg -r pomodoro-lock`
+
+## Usage
+- Run `pomodoro-lock` to start or bring up the timer window
+- Click the tray icon to restore the window if closed
+- Use `pomodoro-configure` for settings
+- Use `pomodoro-service` to manage the user service
+
+## See `docs/README.md` for full details.
 
 ## 🚀 Quick Start
 
@@ -304,28 +323,3 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-## Installation
-
-1. Install the .deb package:
-   ```bash
-   sudo dpkg -i pomodoro-lock_<version>_all.deb
-   ```
-2. Run the app for the first time:
-   ```bash
-   pomodoro-lock
-   ```
-   - On first launch, autostart will be enabled automatically for your user session.
-   - No need to manually enable the service.
-
-## Uninstall
-
-- Use your package manager or:
-  ```bash
-  sudo dpkg -r pomodoro-lock
-  ```
-- If you encounter issues uninstalling, ensure no Pomodoro Lock processes are running and try again.
-
-## Troubleshooting
-
-- If autostart does not work, ensure you have launched the app at least once from your user session.
-- The app will only enable autostart if run from a graphical session with user systemd available.

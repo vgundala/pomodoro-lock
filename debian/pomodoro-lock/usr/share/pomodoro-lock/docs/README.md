@@ -70,29 +70,64 @@ A comprehensive Pomodoro timer application that helps you maintain focus during 
 
 ## Installation
 
-1. Install the .deb package:
+### Quick Install (Recommended)
+
+1. **Install the .deb package:**
    ```bash
    sudo dpkg -i pomodoro-lock_<version>_all.deb
    ```
-2. Run the app for the first time:
+
+2. **Start the application:**
    ```bash
    pomodoro-lock
    ```
-   - On first launch, autostart will be enabled automatically for your user session.
-   - No need to manually enable the service.
+   
+   **Note:** On first launch, autostart will be enabled automatically for your user session. No manual configuration required!
+
+### Manual Installation
+
+If you prefer to build from source:
+
+```bash
+git clone https://github.com/vgundala/pomodoro-lock.git
+cd pomodoro-lock
+make check-deps
+make install
+```
 
 ## Uninstall
 
-- Use your package manager or:
-  ```bash
-  sudo dpkg -r pomodoro-lock
-  ```
-- If you encounter issues uninstalling, ensure no Pomodoro Lock processes are running and try again.
+### Package Manager (Recommended)
+```bash
+sudo dpkg -r pomodoro-lock
+```
+
+The uninstall process is now robust and handles:
+- ✅ Automatic cleanup of all user files and symlinks
+- ✅ Safe process termination without hanging
+- ✅ Removal of systemd service files
+- ✅ Icon cache updates
+- ✅ Edge case handling for multiple users
+
+### Manual Cleanup
+If needed, you can manually remove all files:
+```bash
+rm -rf ~/.local/share/pomodoro-lock
+rm -f ~/.local/bin/pomodoro-*
+rm -f ~/.config/systemd/user/pomodoro-lock.service
+```
 
 ## Troubleshooting
 
-- If autostart does not work, ensure you have launched the app at least once from your user session.
-- The app will only enable autostart if run from a graphical session with user systemd available.
+### Autostart Issues
+- Ensure you've launched the app at least once from your user session
+- The app only enables autostart when run from a graphical session with user systemd available
+- Check service status: `systemctl --user status pomodoro-lock.service`
+
+### Uninstall Issues
+- The uninstall process is now robust and handles edge cases automatically
+- If you encounter any issues, ensure no Pomodoro Lock processes are running before uninstalling
+- The prerm script uses safe file operations and non-blocking process management
 
 ## Configuration
 

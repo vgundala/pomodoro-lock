@@ -8,14 +8,10 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-WorkingDirectory=%h/.local/share/pomodoro-lock
-ExecStart=%h/.local/bin/pomodoro-lock ui
+WorkingDirectory=/usr/share/pomodoro-lock
+ExecStart=/usr/bin/pomodoro-lock ui
 StandardOutput=journal
 StandardError=journal
-# Ensure only one instance runs
-ExecStartPre=/bin/sh -c 'pkill -f "pomodoro-ui-crossplatform.py" || true'
-# Add a small delay to ensure clean startup
-ExecStartPre=/bin/sleep 1
 
 [Install]
 WantedBy=graphical-session.target 

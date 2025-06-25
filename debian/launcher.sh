@@ -1,6 +1,6 @@
 #!/bin/bash
-# Pomodoro Lock Launcher - Userspace Installation
-# This script manages the virtual environment and runs the application
+# Pomodoro Lock Launcher - System-wide Installation
+# This script automatically sets up each user's environment on first run
 
 set -e
 
@@ -8,25 +8,43 @@ set -e
 CURRENT_USER=$(whoami)
 USER_HOME=$(eval echo ~$CURRENT_USER)
 
-# Application paths in user's .local directory
-APP_DIR="$USER_HOME/.local/share/pomodoro-lock"
+# Application paths - system-wide installation
+APP_DIR="/usr/share/pomodoro-lock"
 MAIN_SCRIPT="$APP_DIR/pomodoro-ui-crossplatform.py"
 
-# Check if application is installed in user's .local directory
+# Check if application is installed in system directory
 if [ ! -f "$MAIN_SCRIPT" ]; then
-    echo "Error: Pomodoro Lock is not installed in user directory"
+    echo "Error: Pomodoro Lock is not installed in system directory"
     echo "Expected location: $MAIN_SCRIPT"
     echo "Please install the application first"
     exit 1
 fi
 
-# Get the installation directory
-INSTALL_DIR="/usr/share/pomodoro-lock"
+# User-specific directories
 USER_DIR="$USER_HOME/.local/share/pomodoro-lock"
 VENV_DIR="$USER_DIR/venv"
 
-# Create user directory if it doesn't exist
-mkdir -p "$USER_DIR"
+# Function to setup user environment on first run
+setup_user_environment() {
+    echo "First time setup for user: $CURRENT_USER"
+    echo "Setting up Pomodoro Lock environment..."
+    
+    # Create user directory structure
+    mkdir -p "$USER_DIR"
+    mkdir -p "$USER_HOME/.config/systemd/user"
+    
+    # Setup virtual environment
+    setup_venv
+    
+    # Setup configuration
+    setup_config
+    
+    # Setup systemd service
+    setup_service
+    
+    echo "✅ User environment setup complete!"
+    echo ""
+}
 
 # Function to install dependencies in virtual environment
 setup_venv() {
@@ -89,16 +107,7 @@ setup_config() {
     if [ ! -f "$USER_DIR/config/config.json" ]; then
         echo "Creating user configuration..."
         mkdir -p "$USER_DIR/config"
-        cp "$INSTALL_DIR/config/config.json" "$USER_DIR/config/"
-    fi
-}
-
-# Function to setup startup script
-setup_startup_script() {
-    if [ ! -f "$USER_DIR/start-pomodoro.sh" ]; then
-        echo "Setting up startup script..."
-        cp "$INSTALL_DIR/scripts/start-pomodoro.sh" "$USER_DIR/"
-        chmod +x "$USER_DIR/start-pomodoro.sh"
+        cp "$APP_DIR/config/config.json" "$USER_DIR/config/"
     fi
 }
 
@@ -106,7 +115,6 @@ setup_startup_script() {
 setup_service() {
     if [ ! -f "$USER_HOME/.config/systemd/user/pomodoro-lock.service" ]; then
         echo "Setting up systemd user service..."
-        mkdir -p "$USER_HOME/.config/systemd/user"
         
         # Create service file with correct paths
         cat > "$USER_HOME/.config/systemd/user/pomodoro-lock.service" << EOF
@@ -120,8 +128,8 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-WorkingDirectory=$USER_DIR
-ExecStart=$USER_DIR/start-pomodoro.sh
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/scripts/start-pomodoro.sh
 StandardOutput=journal
 StandardError=journal
 
@@ -132,6 +140,17 @@ EOF
         systemctl --user daemon-reload
         echo "Systemd service configured."
     fi
+}
+
+# Function to check if user environment is set up
+check_user_setup() {
+    # Check if key user files exist
+    if [ ! -d "$VENV_DIR" ] || \
+       [ ! -f "$USER_DIR/config/config.json" ] || \
+       [ ! -f "$USER_HOME/.config/systemd/user/pomodoro-lock.service" ]; then
+        return 1  # Setup needed
+    fi
+    return 0  # Setup complete
 }
 
 # Function to show help
@@ -150,8 +169,9 @@ show_help() {
     echo "  help    - Show this help"
     echo ""
     echo "Installation location: $APP_DIR"
+    echo "User directory: $USER_DIR"
     echo "Service file: $USER_HOME/.config/systemd/user/pomodoro-lock.service"
-    echo "Autostart is enabled on first launch by the app."
+    echo "Autostart will be enabled automatically on first launch."
 }
 
 # Function to start the UI
@@ -159,17 +179,16 @@ start_ui() {
     echo "Starting Pomodoro Lock UI..."
     echo "Application: $MAIN_SCRIPT"
     
-    # Check if already running
+    # Check if already running for this user
     if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-        echo "Warning: Pomodoro Lock is already running"
-        echo "Stopping existing instance..."
-        pkill -f "pomodoro-ui-crossplatform.py"
-        sleep 2
+        echo "Note: Pomodoro Lock appears to be already running"
+        echo "The application will handle multiple instance detection and show existing timer window"
     fi
     
-    # Start the application
+    # Activate virtual environment and start the application
     cd "$APP_DIR"
-    exec python3 pomodoro-ui-crossplatform.py
+    source "$VENV_DIR/bin/activate"
+    exec python pomodoro-ui-crossplatform.py
 }
 
 # Function to manage systemd service
@@ -198,32 +217,36 @@ manage_service() {
 # Main command handling
 case "${1:-ui}" in
     "ui"|"start")
+        # Auto-setup user environment if needed
+        if ! check_user_setup; then
+            setup_user_environment
+            echo ""
+        fi
+        
+        # Start the UI
         start_ui
         ;;
     "service")
-        manage_service "$2"
+        # Auto-setup user environment if needed
+        if ! check_user_setup; then
+            setup_user_environment
+            echo ""
+        fi
+        
+        manage_service "${2:-start}"
         ;;
     "stop")
-        echo "Stopping Pomodoro Lock..."
-        pkill -f "pomodoro-ui-crossplatform.py" 2>/dev/null || true
-        systemctl --user stop pomodoro-lock.service 2>/dev/null || true
+        manage_service "stop"
         ;;
     "status")
-        echo "Pomodoro Lock status:"
-        if pgrep -f "pomodoro-ui-crossplatform.py" > /dev/null; then
-            echo "✅ UI is running"
-        else
-            echo "❌ UI is not running"
-        fi
-        systemctl --user status pomodoro-lock.service --no-pager
+        manage_service "status"
         ;;
     "help"|"-h"|"--help")
         show_help
         ;;
     *)
         echo "Unknown command: $1"
-        echo ""
-        show_help
+        echo "Use: $0 help"
         exit 1
         ;;
 esac 

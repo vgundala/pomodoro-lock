@@ -87,36 +87,40 @@ class PomodoroTimer:
         # Load configuration
         self.config = self._load_config()
         
-        # Initialize platform-specific components
-        self._init_platform_components()
-        
-        # Check and enable systemd service on first launch
-        self._check_and_enable_service()
-        
-        # Initialize GUI components
-        self._init_gui_components()
+        # Initialize platform-specific components (but NOT tray yet)
+        self.notification_manager = NotificationManager()
+        self.screen_manager = ScreenManager()
+        self.autostart_manager = AutostartManager()
+        self.file_lock = FileLockManager(str(self.lock_file))
         
         # Timer state
         self.work_time = self.config.get('work_time_minutes', 25) * 60
         self.break_time = self.config.get('break_time_minutes', 5) * 60
         self.notification_time = self.config.get('notification_time_minutes', 2) * 60
-        
         self.current_time = self.work_time
         self.is_work_session = True
         self.is_paused = False
         self.is_running = False
-        
-        # Threading
         self.timer_thread = None
         self.stop_event = threading.Event()
         
-        # Setup signal handlers
+        # Setup signal handlers (no SIGUSR1)
         self._setup_signal_handlers()
         
         # Acquire lock to prevent multiple instances
         if not self._acquire_lock():
             self._show_already_running_dialog()
             return
+        
+        # Only now, after lock is acquired, create tray and GUI
+        self._init_gui_components()
+        self.system_tray = SystemTrayManager(self)
+        
+        # Always show the timer window on startup
+        self.timer_window.show_window()
+        
+        # Check and enable systemd service on first launch
+        self._check_and_enable_service()
         
         # Start the application
         self.start()
@@ -166,23 +170,6 @@ class PomodoroTimer:
         
         return default_config
     
-    def _init_platform_components(self):
-        """Initialize platform-specific components"""
-        # Initialize notification manager
-        self.notification_manager = NotificationManager()
-        
-        # Initialize system tray manager
-        self.system_tray = SystemTrayManager(self)
-        
-        # Initialize screen manager
-        self.screen_manager = ScreenManager()
-        
-        # Initialize autostart manager
-        self.autostart_manager = AutostartManager()
-        
-        # Initialize file lock manager
-        self.file_lock = FileLockManager(str(self.lock_file))
-    
     def _init_gui_components(self):
         """Initialize GUI components"""
         # Create timer window
@@ -198,14 +185,13 @@ class PomodoroTimer:
         self.timer_window.hide_window()
     
     def _setup_signal_handlers(self):
-        """Setup signal handlers for graceful shutdown"""
+        """Setup signal handlers for graceful shutdown only (no SIGUSR1)"""
         def signal_handler(signum, frame):
             logging.info("Received shutdown signal")
             self.quit_application()
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
-        
         if SYSTEM == "linux":
             signal.signal(signal.SIGHUP, signal_handler)
     
@@ -214,40 +200,46 @@ class PomodoroTimer:
         return self.file_lock.acquire_lock()
     
     def _show_already_running_dialog(self):
-        """Show dialog when another instance is running"""
+        """Show dialog when another instance is running and exit"""
         if SYSTEM == "linux":
-            # Use GTK dialog
             import gi
             gi.require_version('Gtk', '3.0')
             from gi.repository import Gtk
-            
             dialog = Gtk.MessageDialog(
                 parent=None,
-                flags=Gtk.DialogFlags.MODAL,
-                type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
+                message_type=Gtk.MessageType.INFO,
+                modal=True,
+                destroy_with_parent=True,
                 text="Pomodoro Lock is already running"
+            )
+            dialog.format_secondary_text(
+                "The timer is already running. Only one instance is allowed.\n\n"
+                "To show the timer window, click the Pomodoro Lock icon in your system tray."
+            )
+            dialog.add_buttons(
+                "OK", Gtk.ResponseType.OK
             )
             dialog.run()
             dialog.destroy()
         else:
-            # Use Tkinter dialog
             import tkinter as tk
             from tkinter import messagebox
-            
             root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            messagebox.showinfo("Pomodoro Lock", "Pomodoro Lock is already running")
+            root.withdraw()
+            messagebox.showinfo(
+                "Pomodoro Lock", 
+                "Pomodoro Lock is already running. Only one instance is allowed.\n\n"
+                "To show the timer window, click the Pomodoro Lock icon in your system tray."
+            )
             root.destroy()
-        
-        sys.exit(1)
+        sys.exit(0)
     
     def start(self):
         """Start the Pomodoro timer"""
         logging.info("Starting Pomodoro timer")
         self.is_running = True
         
-        # Show system tray
+        # Show system tray (now safe, only one instance)
         self._show_system_tray()
         
         # Start timer thread
