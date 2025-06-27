@@ -106,6 +106,7 @@ class PomodoroTimer:
         
         # Snooze functionality
         self.snooze_timer = None
+        self.snooze_timeout_id = None  # For GLib timeouts on Linux
         self.paused_time = None
         
         # Setup signal handlers (no SIGUSR1)
@@ -204,16 +205,37 @@ class PomodoroTimer:
             raise
     
     def _setup_signal_handlers(self):
-        """Setup signal handlers for graceful shutdown only (no SIGUSR1)"""
+        """Set up signal handlers for graceful shutdown"""
         def signal_handler(signum, frame):
-            logging.info(f"Received shutdown signal {signum}")
+            logging.info(f"Received signal {signum}, shutting down gracefully")
             self.quit_application()
         
+        # Set up GLib assertion failure handler for Linux
+        if SYSTEM == "linux":
+            try:
+                import gi
+                gi.require_version('GLib', '2.0')
+                from gi.repository import GLib
+                
+                # Set up assertion failure handler
+                def glib_assertion_handler(log_domain, log_level, message):
+                    if "g_hash_table_remove_node" in message or "assertion failed" in message:
+                        logging.warning(f"GLib assertion caught: {message}")
+                        # Don't abort, just log the warning
+                        return True
+                    return False
+                
+                # Install the assertion handler
+                GLib.log_set_handler(None, GLib.LogLevelFlags.LEVEL_WARNING, glib_assertion_handler)
+                logging.info("GLib assertion failure handler installed")
+                
+            except Exception as e:
+                logging.warning(f"Could not install GLib assertion handler: {e}")
+        
+        # Set up system signal handlers
+        import signal
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
-        if SYSTEM == "linux":
-            signal.signal(signal.SIGHUP, signal_handler)
-            # Don't handle SIGUSR1 as it's not used anymore
     
     def _acquire_lock(self):
         """Acquire file lock to prevent multiple instances"""
@@ -305,7 +327,8 @@ class PomodoroTimer:
             self.notification_manager.send_notification(
                 "Pomodoro Lock",
                 f"Break starting in {self.notification_time // 60} minutes!",
-                "normal"
+                "normal",
+                timeout=8  # 8 seconds for break warning
             )
     
     def _session_ended(self):
@@ -342,7 +365,8 @@ class PomodoroTimer:
                 self.notification_manager.send_notification(
                     "Pomodoro Lock",
                     "Break time! Take a rest.",
-                    "high"
+                    "high",
+                    timeout=5  # 5 seconds for break start notification
                 )
             except Exception as e:
                 logging.error(f"Failed to send break notification: {e}")
@@ -376,7 +400,8 @@ class PomodoroTimer:
                 self.notification_manager.send_notification(
                     "Pomodoro Lock",
                     "Break ended! Back to work.",
-                    "normal"
+                    "normal",
+                    timeout=6  # 6 seconds for break end
                 )
             except Exception as e:
                 logging.error(f"Failed to send break end notification: {e}")
@@ -519,11 +544,33 @@ class PomodoroTimer:
             if self.is_paused:
                 # If already paused, resume the timer immediately
                 self.is_paused = False
+                
+                # Cancel any pending auto-resume timer
+                if hasattr(self, 'snooze_timeout_id') and self.snooze_timeout_id:
+                    try:
+                        if SYSTEM == "linux":
+                            import gi
+                            gi.require_version('GLib', '2.0')
+                            from gi.repository import GLib
+                            GLib.source_remove(self.snooze_timeout_id)
+                            logging.info("Cancelled active GLib snooze timeout")
+                        else:
+                            # For Windows, cancel the threading timer
+                            if self.snooze_timer and self.snooze_timer.is_alive():
+                                self.snooze_timer.cancel()
+                                logging.info("Cancelled active threading snooze timer")
+                    except Exception as e:
+                        logging.error(f"Error cancelling snooze timer: {e}")
+                    finally:
+                        self.snooze_timeout_id = None
+                        self.snooze_timer = None
+                
                 logging.info("Timer resumed manually")
                 self.notification_manager.send_notification(
                     "Pomodoro Lock",
                     "Timer resumed!",
-                    "normal"
+                    "normal",
+                    timeout=5  # 5 seconds for resume notification
                 )
             else:
                 # Pause the timer and set up auto-resume after 10 minutes
@@ -533,16 +580,27 @@ class PomodoroTimer:
                 # Store the original time when paused
                 self.paused_time = self.current_time
                 
-                # Set up auto-resume timer
-                self.snooze_timer = threading.Timer(snooze_seconds, self._auto_resume_timer)
-                self.snooze_timer.daemon = True
-                self.snooze_timer.start()
+                # Set up auto-resume timer using platform-appropriate method
+                if SYSTEM == "linux":
+                    # Use GLib timeout for Linux (main thread safe)
+                    import gi
+                    gi.require_version('GLib', '2.0')
+                    from gi.repository import GLib
+                    self.snooze_timeout_id = GLib.timeout_add_seconds(snooze_seconds, self._auto_resume_timer)
+                    self.snooze_timer = None  # Not used on Linux
+                else:
+                    # Use threading.Timer for Windows
+                    self.snooze_timer = threading.Timer(snooze_seconds, self._auto_resume_timer)
+                    self.snooze_timer.daemon = True
+                    self.snooze_timer.start()
+                    self.snooze_timeout_id = None  # Not used on Windows
                 
                 logging.info(f"Timer paused and will auto-resume in {snooze_seconds // 60} minutes")
                 self.notification_manager.send_notification(
                     "Pomodoro Lock",
                     f"Timer paused. Will resume in {snooze_seconds // 60} minutes",
-                    "normal"
+                    "normal",
+                    timeout=10  # 10 seconds for pause notification
                 )
             
             # Update GUI to reflect the new state
@@ -560,28 +618,51 @@ class PomodoroTimer:
                 self.notification_manager.send_notification(
                     "Pomodoro Lock",
                     "Timer resumed automatically!",
-                    "normal"
+                    "normal",
+                    timeout=5  # 5 seconds for auto-resume notification
                 )
                 
                 # Update GUI to reflect the new state
                 self._update_gui()
                 
+                # Clean up timeout ID
+                if hasattr(self, 'snooze_timeout_id'):
+                    self.snooze_timeout_id = None
+                if hasattr(self, 'snooze_timer'):
+                    self.snooze_timer = None
+                
         except Exception as e:
             logging.error(f"Error in auto-resume functionality: {e}")
+        
+        # Return False to stop the GLib timeout (Linux only)
+        if SYSTEM == "linux":
+            return False
     
     def quit_application(self):
-        """Quit the application"""
+        """Quit the application with enhanced cleanup"""
         logging.info("Quitting Pomodoro Lock")
         self.is_running = False
         self.stop_event.set()
         
         # Cancel any active snooze timer
-        if self.snooze_timer and self.snooze_timer.is_alive():
+        if hasattr(self, 'snooze_timeout_id') and self.snooze_timeout_id:
             try:
-                self.snooze_timer.cancel()
-                logging.info("Cancelled active snooze timer")
+                if SYSTEM == "linux":
+                    import gi
+                    gi.require_version('GLib', '2.0')
+                    from gi.repository import GLib
+                    GLib.source_remove(self.snooze_timeout_id)
+                    logging.info("Cancelled active GLib snooze timeout")
+                else:
+                    # For Windows, cancel the threading timer
+                    if self.snooze_timer and self.snooze_timer.is_alive():
+                        self.snooze_timer.cancel()
+                        logging.info("Cancelled active threading snooze timer")
             except Exception as e:
                 logging.error(f"Error cancelling snooze timer: {e}")
+            finally:
+                self.snooze_timeout_id = None
+                self.snooze_timer = None
         
         # Stop system tray
         if self.system_tray is not None and hasattr(self.system_tray, 'stop'):
@@ -596,22 +677,53 @@ class PomodoroTimer:
         except Exception as e:
             logging.error(f"Error releasing lock: {e}")
         
-        # Destroy GUI components
+        # Destroy GUI components with enhanced error handling
         try:
-            self.timer_window.destroy_window()
-            self.multi_overlay.destroy_all()
+            logging.info("Destroying GUI components...")
+            
+            # First destroy overlays to prevent any active operations
+            if hasattr(self, 'multi_overlay') and self.multi_overlay:
+                try:
+                    self.multi_overlay.destroy_all()
+                    logging.info("Overlays destroyed successfully")
+                except Exception as e:
+                    logging.error(f"Error destroying overlays: {e}")
+            
+            # Small delay to allow GTK to process overlay destruction
+            import time
+            time.sleep(0.05)
+            
+            # Then destroy timer window
+            if hasattr(self, 'timer_window') and self.timer_window:
+                try:
+                    self.timer_window.destroy_window()
+                    logging.info("Timer window destroyed successfully")
+                except Exception as e:
+                    logging.error(f"Error destroying timer window: {e}")
+            
+            # Additional delay before quitting GUI loop
+            time.sleep(0.05)
+            
         except Exception as e:
-            logging.error(f"Error destroying GUI components: {e}")
+            logging.error(f"Error during GUI cleanup: {e}")
         
-        # Quit GUI loop
-        if SYSTEM == "linux":
-            import gi
-            gi.require_version('Gtk', '3.0')
-            from gi.repository import Gtk
-            Gtk.main_quit()
-        else:
-            if hasattr(self, 'root'):
-                self.root.quit()
+        # Quit GUI loop with error handling
+        try:
+            if SYSTEM == "linux":
+                import gi
+                gi.require_version('Gtk', '3.0')
+                from gi.repository import Gtk
+                Gtk.main_quit()
+                logging.info("GTK main loop quit successfully")
+            else:
+                if hasattr(self, 'root'):
+                    self.root.quit()
+                    logging.info("Tkinter main loop quit successfully")
+        except Exception as e:
+            logging.error(f"Error quitting GUI loop: {e}")
+            # Force exit if GUI quit fails
+            import sys
+            sys.exit(0)
     
     def _check_and_enable_service(self):
         """Check if systemd service is enabled, and enable it if not"""

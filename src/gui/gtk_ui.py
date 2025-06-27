@@ -305,8 +305,47 @@ class TimerWindow(Gtk.Window):
         self.hide()
     
     def destroy_window(self):
-        """Destroy the timer window"""
-        self.destroy()
+        """Destroy the timer window with enhanced error handling"""
+        try:
+            # First hide the window to stop any active operations
+            self.hide_window()
+            
+            # Small delay to allow GTK to process the hide operation
+            import time
+            time.sleep(0.01)
+            
+            # Disconnect any signals to prevent callbacks during destruction
+            try:
+                # Disconnect button signals
+                self.close_button.disconnect_by_func(self._on_close_clicked)
+                self.power_button.disconnect_by_func(self._on_power_clicked)
+                self.pause_snooze_button.disconnect_by_func(self._on_pause_snooze_clicked)
+                
+                # Disconnect event box signals
+                self.event_box.disconnect_by_func(self._on_button_press)
+                self.event_box.disconnect_by_func(self._on_button_release)
+                self.event_box.disconnect_by_func(self._on_motion)
+            except Exception as e:
+                # Ignore errors if no signals are connected
+                pass
+            
+            # Now destroy the window
+            self.destroy()
+            
+        except RecursionError as e:
+            print(f"Recursion error in destroy_window: {e}")
+            # Fallback to basic destroy
+            try:
+                self.destroy()
+            except Exception as fallback_error:
+                print(f"Fallback destroy also failed: {fallback_error}")
+        except Exception as e:
+            print(f"Error in destroy_window: {e}")
+            # Try to force destroy
+            try:
+                self.destroy()
+            except Exception as force_error:
+                print(f"Force destroy also failed: {force_error}")
     
     def lower_window(self):
         """Lower the window to ensure overlay is on top"""
@@ -492,8 +531,40 @@ class FullScreenOverlay(Gtk.Window):
         self.hide()
     
     def destroy_overlay(self):
-        """Destroy the overlay"""
-        self.destroy()
+        """Destroy the overlay with enhanced error handling"""
+        try:
+            # First hide the overlay to stop any active operations
+            self.hide_overlay()
+            
+            # Small delay to allow GTK to process the hide operation
+            import time
+            time.sleep(0.01)
+            
+            # Disconnect any signals to prevent callbacks during destruction
+            try:
+                # Disconnect all signals from this window
+                self.disconnect_by_func(self._on_key_press)
+            except Exception as e:
+                # Ignore errors if no signals are connected
+                pass
+            
+            # Now destroy the window
+            self.destroy()
+            
+        except RecursionError as e:
+            print(f"Recursion error in destroy_overlay: {e}")
+            # Fallback to basic destroy
+            try:
+                self.destroy()
+            except Exception as fallback_error:
+                print(f"Fallback destroy also failed: {fallback_error}")
+        except Exception as e:
+            print(f"Error in destroy_overlay: {e}")
+            # Try to force destroy
+            try:
+                self.destroy()
+            except Exception as force_error:
+                print(f"Force destroy also failed: {force_error}")
     
     def raise_(self):
         """Raise the overlay (alias for raise_window)"""
@@ -581,17 +652,47 @@ class MultiDisplayOverlay:
                 print(f"Failed to update overlay {i} timer: {e}")
     
     def destroy_all(self):
-        """Destroy all overlays"""
+        """Destroy all overlays with enhanced error handling"""
         print(f"Destroying {len(self.overlays)} overlays")
-        for i, overlay in enumerate(self.overlays):
+        
+        # Create a copy of the list to avoid modification during iteration
+        overlays_to_destroy = list(self.overlays)
+        self.overlays.clear()  # Clear the list immediately to prevent further access
+        
+        for i, overlay in enumerate(overlays_to_destroy):
+            if overlay is None:
+                continue
+                
             try:
                 print(f"Destroying overlay {i}")
+                
+                # First hide the overlay to prevent any active operations
+                try:
+                    overlay.hide_overlay()
+                except Exception as hide_error:
+                    print(f"Error hiding overlay {i} before destroy: {hide_error}")
+                
+                # Small delay to allow GTK to process the hide operation
+                import time
+                time.sleep(0.01)
+                
+                # Now destroy the overlay
                 overlay.destroy_overlay()
+                
             except RecursionError as e:
                 print(f"Recursion error destroying overlay {i}: {e}")
                 # Force destroy by setting overlay to None
-                self.overlays[i] = None
+                overlays_to_destroy[i] = None
                 continue
             except Exception as e:
                 print(f"Failed to destroy overlay {i}: {e}")
-        self.overlays.clear() 
+                # Try to force destroy the window
+                try:
+                    if hasattr(overlay, 'destroy') and overlay.destroy:
+                        overlay.destroy()
+                except Exception as force_error:
+                    print(f"Force destroy also failed for overlay {i}: {force_error}")
+        
+        # Final cleanup - ensure the list is empty
+        self.overlays.clear()
+        print("Overlay destruction completed") 

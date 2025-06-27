@@ -58,20 +58,28 @@ class NotificationManager:
             except Exception as e:
                 logging.error(f"Failed to initialize toast notifier: {e}")
     
-    def send_notification(self, title, message, urgency="normal"):
-        """Send a Windows toast notification"""
+    def send_notification(self, title, message, urgency="normal", timeout=10):
+        """Send a Windows toast notification with auto-disappear timeout"""
         if not self.toaster:
             logging.warning("Notifications not available")
             return False
         
         try:
-            # Convert urgency to Windows toast duration
-            duration = 5 if urgency == "low" else 10 if urgency == "normal" else 15
+            # Convert urgency to Windows toast duration and adjust timeout
+            if urgency == "low":
+                duration = 5
+                timeout = min(timeout, 5)
+            elif urgency == "high":
+                duration = 15
+                timeout = max(timeout, 15)
+            else:  # normal
+                duration = 10
+                timeout = min(timeout, 10)
             
             self.toaster.show_toast(
                 title,
                 message,
-                duration=duration,
+                duration=timeout,
                 threaded=True
             )
             return True

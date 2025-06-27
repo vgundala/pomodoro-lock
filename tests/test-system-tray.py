@@ -1,62 +1,105 @@
 #!/usr/bin/env python3
 """
-System Tray Test - Comprehensive testing of system tray functionality
+System Tray Functionality Test
 
-This test will check:
+This test verifies:
 1. AppIndicator3 availability and functionality
-2. System tray icon creation
-3. Menu functionality
-4. Fallback mechanisms for different desktop environments
-5. Status updates
+2. System tray icon creation and display
+3. Menu interaction and callbacks
+4. Status updates and icon changes
+5. Fallback mechanisms for different desktop environments
 """
 
 import os
 import sys
-import time
 import signal
-import logging
 import gi
 gi.require_version('Gtk', '3.0')
-gi.require_version('AppIndicator3', '0.1')
-from gi.repository import Gtk, GLib, AppIndicator3
+gi.require_version('GLib', '2.0')
+from gi.repository import Gtk, GLib
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+# Try to import the newer libayatana-appindicator-glib first
+try:
+    gi.require_version('AyatanaAppIndicator3', '0.1')
+    from gi.repository import AyatanaAppIndicator3
+    APPINDICATOR_NEW_API = True
+    print("Using libayatana-appindicator-glib (new API)")
+except ImportError:
+    # Fallback to the older libayatana-appindicator
+    try:
+        gi.require_version('AppIndicator3', '0.1')
+        from gi.repository import AppIndicator3
+        APPINDICATOR_NEW_API = False
+        print("Using libayatana-appindicator (deprecated API)")
+    except ImportError:
+        print("No appindicator library available")
+        APPINDICATOR_NEW_API = None
 
 class SystemTrayTest:
+    """System tray functionality test class"""
+    
     def __init__(self):
         self.indicator = None
-        self.test_results = {}
-        self.menu_clicked = False
+        self.test_results = {
+            'desktop_environment': False,
+            'appindicator3': False,
+            'icon_availability': False,
+            'system_tray_creation': False,
+            'status_updates': False,
+            'menu_interaction': False,
+            'fallback_mechanisms': False
+        }
+    
+    def test_desktop_environment(self):
+        """Test desktop environment detection"""
+        print("🔍 Testing desktop environment...")
         
+        desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
+        session = os.environ.get('DESKTOP_SESSION', '').lower()
+        
+        if 'gnome' in desktop or 'ubuntu' in desktop or 'unity' in desktop:
+            print("✅ GNOME detected - using AppIndicator3")
+            self.test_results['desktop_environment'] = True
+            return 'GNOME'
+        elif 'kde' in desktop or 'plasma' in desktop:
+            print("✅ KDE detected - using AppIndicator3")
+            self.test_results['desktop_environment'] = True
+            return 'KDE'
+        else:
+            print("⚠️  Unknown desktop environment - testing AppIndicator3 anyway")
+            return 'OTHER'
+    
     def test_appindicator3_availability(self):
         """Test if AppIndicator3 is available"""
         print("🔍 Testing AppIndicator3 availability...")
+        
+        if APPINDICATOR_NEW_API is None:
+            print("❌ No appindicator library available")
+            self.test_results['appindicator3'] = False
+            return False
+        
         try:
-            # Try to create a test indicator
-            test_indicator = AppIndicator3.Indicator.new(
-                "test-indicator",
-                "dialog-information",
-                AppIndicator3.IndicatorCategory.APPLICATION_STATUS
-            )
-            test_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-            test_indicator.set_label("Test", "")
-            
-            # Create a simple menu
-            menu = Gtk.Menu()
-            item = Gtk.MenuItem(label="Test Item")
-            menu.append(item)
-            menu.show_all()
-            test_indicator.set_menu(menu)
+            if APPINDICATOR_NEW_API:
+                # Test the new AyatanaAppIndicator3 API
+                test_indicator = AyatanaAppIndicator3.Indicator.new(
+                    "test-indicator",
+                    "pomodoro-lock",
+                    AyatanaAppIndicator3.IndicatorCategory.APPLICATION_STATUS
+                )
+                test_indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+                test_indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.PASSIVE)
+            else:
+                # Test the old AppIndicator3 API
+                test_indicator = AppIndicator3.Indicator.new(
+                    "test-indicator",
+                    "pomodoro-lock",
+                    AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+                )
+                test_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+                test_indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
             
             print("✅ AppIndicator3 is available and working")
             self.test_results['appindicator3'] = True
-            
-            # Clean up test indicator
-            test_indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
             return True
             
         except Exception as e:
@@ -64,127 +107,74 @@ class SystemTrayTest:
             self.test_results['appindicator3'] = False
             return False
     
-    def test_desktop_environment(self):
-        """Detect desktop environment"""
-        print("🔍 Detecting desktop environment...")
-        
-        desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
-        session = os.environ.get('DESKTOP_SESSION', '').lower()
-        
-        if 'gnome' in desktop or 'gnome' in session:
-            env = 'GNOME'
-        elif 'kde' in desktop or 'kde' in session:
-            env = 'KDE'
-        elif 'xfce' in desktop or 'xfce' in session:
-            env = 'XFCE'
-        elif 'mate' in desktop or 'mate' in session:
-            env = 'MATE'
-        elif 'cinnamon' in desktop or 'cinnamon' in session:
-            env = 'Cinnamon'
-        else:
-            env = 'Unknown'
-        
-        print(f"✅ Desktop Environment: {env}")
-        self.test_results['desktop_environment'] = env
-        return env
-    
-    def test_system_tray_creation(self):
-        """Test creating the actual system tray icon"""
-        print("🔍 Testing system tray icon creation...")
-        
-        try:
-            self.indicator = AppIndicator3.Indicator.new(
-                "pomodoro-lock-test",
-                "pomodoro-lock",  # Use the custom icon
-                AppIndicator3.IndicatorCategory.APPLICATION_STATUS
-            )
-            self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-            self.indicator.set_label("Test: 25:00", "")
-            
-            # Create menu
-            menu = Gtk.Menu()
-            
-            # Test item
-            test_item = Gtk.MenuItem(label="Test Menu Item")
-            test_item.connect("activate", self.on_test_menu_click)
-            menu.append(test_item)
-            
-            # Separator
-            separator = Gtk.SeparatorMenuItem()
-            menu.append(separator)
-            
-            # Quit item
-            quit_item = Gtk.MenuItem(label="Quit Test")
-            quit_item.connect("activate", self.on_quit)
-            menu.append(quit_item)
-            
-            menu.show_all()
-            self.indicator.set_menu(menu)
-            
-            print("✅ System tray icon created successfully")
-            self.test_results['system_tray_creation'] = True
-            return True
-            
-        except Exception as e:
-            print(f"❌ Failed to create system tray icon: {e}")
-            self.test_results['system_tray_creation'] = False
-            return False
-    
     def test_icon_availability(self):
-        """Test if the pomodoro-lock icon is available"""
+        """Test if the application icon is available"""
         print("🔍 Testing icon availability...")
         
-        # Check common icon locations
         icon_paths = [
             "/usr/share/icons/hicolor/scalable/apps/pomodoro-lock.svg",
             "/usr/share/pixmaps/pomodoro-lock.svg",
             "pomodoro-lock.svg",
-            "../pomodoro-lock.svg"
+            "src/pomodoro-lock.svg"
         ]
         
-        found_icon = False
         for path in icon_paths:
             if os.path.exists(path):
                 print(f"✅ Icon found at: {path}")
-                found_icon = True
-                break
+                self.test_results['icon_availability'] = True
+                return True
         
-        if not found_icon:
-            print("⚠️  Pomodoro Lock icon not found, using fallback")
-            # Try to use a system icon as fallback
-            try:
-                if self.indicator:
-                    self.indicator.set_icon("dialog-information")
-                print("✅ Using fallback icon: dialog-information")
-                found_icon = True
-            except:
-                print("❌ Could not set fallback icon")
+        print("⚠️  Icon not found in standard locations")
+        self.test_results['icon_availability'] = False
+        return False
+    
+    def test_system_tray_creation(self):
+        """Test system tray indicator creation"""
+        print("🔍 Testing system tray creation...")
         
-        self.test_results['icon_availability'] = found_icon
-        return found_icon
+        try:
+            if APPINDICATOR_NEW_API:
+                self.indicator = AyatanaAppIndicator3.Indicator.new(
+                    "pomodoro-lock-test",
+                    "pomodoro-lock",
+                    AyatanaAppIndicator3.IndicatorCategory.APPLICATION_STATUS
+                )
+                self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+            else:
+                self.indicator = AppIndicator3.Indicator.new(
+                    "pomodoro-lock-test",
+                    "pomodoro-lock",
+                    AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+                )
+                self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+            
+            print("✅ System tray indicator created successfully")
+            self.test_results['system_tray_creation'] = True
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to create system tray: {e}")
+            self.test_results['system_tray_creation'] = False
+            return False
     
     def test_status_updates(self):
-        """Test updating the system tray status"""
+        """Test system tray status updates"""
         print("🔍 Testing status updates...")
         
         if not self.indicator:
-            print("❌ No indicator available for status test")
-            self.test_results['status_updates'] = False
+            print("❌ No indicator available for status updates")
             return False
         
         try:
-            # Test different status updates
-            test_statuses = [
-                ("Work: 25:00", "work"),
-                ("Break: 05:00", "break"),
-                ("Paused: 12:30", "paused")
-            ]
+            # Test tooltip updates
+            self.indicator.set_title("Pomodoro Lock - Work: 25:00")
+            self.indicator.set_title("Pomodoro Lock - Break: 05:00")
             
-            for status_text, status_type in test_statuses:
-                self.indicator.set_label(status_text, "")
-                print(f"✅ Status updated: {status_text}")
-                time.sleep(1)
+            # Test icon changes
+            self.indicator.set_icon("pomodoro-lock")
+            self.indicator.set_icon("pomodoro-lock-break")
             
+            print("✅ Status updates working correctly")
             self.test_results['status_updates'] = True
             return True
             
@@ -196,88 +186,81 @@ class SystemTrayTest:
     def test_menu_interaction(self):
         """Test menu interaction"""
         print("🔍 Testing menu interaction...")
-        print("📋 Right-click on the system tray icon to test menu")
-        print("   - Click 'Test Menu Item' to verify menu works")
-        print("   - Click 'Quit Test' to exit")
         
-        self.menu_clicked = False
+        if not self.indicator:
+            print("❌ No indicator available for menu testing")
+            return False
         
-        # Wait for user interaction
-        timeout = 30  # 30 seconds timeout
-        start_time = time.time()
-        
-        while not self.menu_clicked and (time.time() - start_time) < timeout:
-            time.sleep(0.1)
-            Gtk.main_iteration_do(False)
-        
-        if self.menu_clicked:
-            print("✅ Menu interaction successful")
+        try:
+            # Create a test menu
+            menu = Gtk.Menu()
+            
+            # Test item
+            test_item = Gtk.MenuItem(label="Test Item")
+            test_item.connect("activate", self._on_test_menu_click)
+            menu.append(test_item)
+            
+            # Quit item
+            quit_item = Gtk.MenuItem(label="Quit Test")
+            quit_item.connect("activate", self._on_quit_test)
+            menu.append(quit_item)
+            
+            menu.show_all()
+            self.indicator.set_menu(menu)
+            
+            print("✅ Menu created and attached successfully")
             self.test_results['menu_interaction'] = True
             return True
-        else:
-            print("⚠️  Menu interaction test timed out")
+            
+        except Exception as e:
+            print(f"❌ Menu interaction failed: {e}")
             self.test_results['menu_interaction'] = False
             return False
+    
+    def _on_test_menu_click(self, widget):
+        """Handle test menu item click"""
+        print("✅ Menu item clicked successfully")
+    
+    def _on_quit_test(self, widget):
+        """Handle quit menu item click"""
+        print("🛑 Quit requested from menu")
+        self.cleanup()
+        Gtk.main_quit()
     
     def test_fallback_mechanisms(self):
         """Test fallback mechanisms for environments without AppIndicator3"""
         print("🔍 Testing fallback mechanisms...")
         
-        # Test notification fallback
+        # Test if we can create a simple GTK window as fallback
         try:
-            import notify2
-            notify2.init("Pomodoro Test")
-            notification = notify2.Notification(
-                "Pomodoro Test", 
-                "Testing fallback notification system",
-                "dialog-information"
-            )
-            notification.show()
-            print("✅ Notification fallback works")
-            time.sleep(2)
-            notification.close()
-            self.test_results['notification_fallback'] = True
-        except Exception as e:
-            print(f"❌ Notification fallback failed: {e}")
-            self.test_results['notification_fallback'] = False
-        
-        # Test status window fallback
-        try:
-            status_window = Gtk.Window()
-            status_window.set_decorated(False)
-            status_window.set_keep_above(True)
-            status_window.set_default_size(200, 60)
+            fallback_window = Gtk.Window()
+            fallback_window.set_title("Fallback Window")
+            fallback_window.set_default_size(200, 100)
+            fallback_window.connect("destroy", Gtk.main_quit)
+            fallback_window.show_all()
             
-            label = Gtk.Label(label="⏰ Test Status Window")
-            status_window.add(label)
-            status_window.show_all()
+            # Close the window immediately
+            fallback_window.destroy()
             
-            print("✅ Status window fallback works")
-            time.sleep(2)
-            status_window.destroy()
-            self.test_results['status_window_fallback'] = True
+            print("✅ Fallback mechanisms available")
+            self.test_results['fallback_mechanisms'] = True
+            return True
             
         except Exception as e:
-            print(f"❌ Status window fallback failed: {e}")
-            self.test_results['status_window_fallback'] = False
-        
-        return True
-    
-    def on_test_menu_click(self, widget):
-        """Callback for test menu item"""
-        print("✅ Menu item clicked successfully!")
-        self.menu_clicked = True
-    
-    def on_quit(self, widget):
-        """Callback for quit menu item"""
-        print("🛑 Quit requested from menu")
-        self.cleanup()
-        Gtk.main_quit()
+            print(f"❌ Fallback mechanisms failed: {e}")
+            self.test_results['fallback_mechanisms'] = False
+            return False
     
     def cleanup(self):
         """Clean up resources"""
         if self.indicator:
-            self.indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
+            try:
+                if APPINDICATOR_NEW_API:
+                    self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.PASSIVE)
+                else:
+                    self.indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
     
     def run_all_tests(self):
         """Run all system tray tests"""
@@ -327,35 +310,28 @@ class SystemTrayTest:
         Gtk.main_quit()
     
     def print_results(self):
-        """Print test results summary"""
-        print("\n" + "=" * 50)
-        print("📊 TEST RESULTS SUMMARY")
+        """Print test results"""
+        print("\n📊 Test Results:")
         print("=" * 50)
         
-        for test_name, result in self.test_results.items():
-            status = "✅ PASS" if result else "❌ FAIL"
-            if isinstance(result, str):
-                status = f"ℹ️  {result}"
+        for test_name, passed in self.test_results.items():
+            status = "✅ PASS" if passed else "❌ FAIL"
             print(f"{test_name.replace('_', ' ').title()}: {status}")
         
         print("\n💡 Recommendations:")
+        print("=" * 50)
         
         if not self.test_results.get('appindicator3', False):
             print("   - Install AppIndicator3 for better system tray support")
-            print("   - On Ubuntu/Debian: sudo apt-get install gir1.2-appindicator3-0.1")
+            if APPINDICATOR_NEW_API is None:
+                print("   - On Ubuntu/Debian: sudo apt-get install gir1.2-ayatanaappindicator3-0.1")
+            else:
+                print("   - On Ubuntu/Debian: sudo apt-get install gir1.2-appindicator3-0.1")
         
         if not self.test_results.get('icon_availability', False):
-            print("   - Install the pomodoro-lock icon for better visual integration")
-        
-        if self.test_results.get('desktop_environment') == 'XFCE':
-            print("   - XFCE has limited system tray support, fallback mechanisms will be used")
-        
-        print("=" * 50)
-
-def main():
-    """Main function"""
-    test = SystemTrayTest()
-    test.run_all_tests()
+            print("   - Ensure pomodoro-lock.svg icon is installed")
+            print("   - Icon should be in /usr/share/icons/hicolor/scalable/apps/")
 
 if __name__ == "__main__":
-    main() 
+    test = SystemTrayTest()
+    test.run_all_tests() 

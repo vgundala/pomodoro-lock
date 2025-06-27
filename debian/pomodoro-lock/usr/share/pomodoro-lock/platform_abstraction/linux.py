@@ -12,8 +12,11 @@ import warnings
 import platform as platform_module
 from pathlib import Path
 
-# Suppress deprecated appindicator warnings
+# Suppress all appindicator-related deprecation warnings
+warnings.filterwarnings("ignore", message=".*libayatana-appindicator is deprecated.*")
+warnings.filterwarnings("ignore", message=".*libayatana-appindicator.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="gi.repository.AppIndicator3")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="gi.repository.AyatanaAppIndicator3")
 
 # Check for Linux
 if platform_module.system().lower() != "linux":
@@ -24,13 +27,13 @@ GTK_AVAILABLE = False
 XLIB_AVAILABLE = False
 NOTIFY2_AVAILABLE = False
 APPINDICATOR_AVAILABLE = False
+APPINDICATOR_NEW_API = False
 
 try:
     import gi
     gi.require_version('Notify', '0.7')
     gi.require_version('Gtk', '3.0')
-    gi.require_version('AppIndicator3', '0.1')
-    from gi.repository import Notify, Gtk, GLib, Gdk, AppIndicator3
+    from gi.repository import Notify, Gtk, GLib, Gdk
     GTK_AVAILABLE = True
 except ImportError:
     logging.warning("GTK3 not available - GUI features will be disabled")
@@ -47,13 +50,31 @@ try:
 except ImportError:
     logging.warning("notify2 not available - notifications will be disabled")
 
+# Try to import the newer libayatana-appindicator-glib first
 try:
     import gi
-    gi.require_version('AppIndicator3', '0.1')
-    from gi.repository import AppIndicator3
+    gi.require_version('AyatanaAppIndicator3', '0.1')
+    from gi.repository import AyatanaAppIndicator3
     APPINDICATOR_AVAILABLE = True
+    APPINDICATOR_NEW_API = True
+    logging.info("Using libayatana-appindicator-glib (new API)")
 except ImportError:
-    logging.warning("AppIndicator3 not available - system tray will be disabled")
+    # Fallback to the older libayatana-appindicator
+    try:
+        import gi
+        gi.require_version('AppIndicator3', '0.1')
+        from gi.repository import AppIndicator3
+        APPINDICATOR_AVAILABLE = True
+        APPINDICATOR_NEW_API = False
+        logging.warning("Using deprecated libayatana-appindicator - consider installing libayatana-appindicator-glib")
+        
+        # Suppress the deprecation warning for the old library
+        import warnings
+        warnings.filterwarnings("ignore", message=".*libayatana-appindicator is deprecated.*")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="gi.repository.AppIndicator3")
+        
+    except ImportError:
+        logging.warning("No appindicator library available - system tray will be disabled")
 
 class NotificationManager:
     """Linux notification manager using notify2"""
@@ -91,7 +112,7 @@ class NotificationManager:
             return False
 
 class SystemTrayManager:
-    """Linux system tray manager using AppIndicator3"""
+    """Linux system tray manager using AyatanaAppIndicator3 (new) or AppIndicator3 (fallback)"""
     
     def __init__(self, parent):
         self.parent = parent
@@ -102,6 +123,10 @@ class SystemTrayManager:
             logging.warning("System tray not available (GTK missing)")
             return
         
+        if not APPINDICATOR_AVAILABLE:
+            logging.warning("System tray not available (no appindicator library)")
+            return
+        
         try:
             self._create_indicator()
         except Exception as e:
@@ -109,12 +134,22 @@ class SystemTrayManager:
     
     def _create_indicator(self):
         """Create the system tray indicator"""
-        self.indicator = AppIndicator3.Indicator.new(
-            "pomodoro-lock",
-            "pomodoro-lock",
-            AppIndicator3.IndicatorCategory.APPLICATION_STATUS
-        )
-        self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+        if APPINDICATOR_NEW_API:
+            # Use the new AyatanaAppIndicator3 API
+            self.indicator = AyatanaAppIndicator3.Indicator.new(
+                "pomodoro-lock",
+                "pomodoro-lock",
+                AyatanaAppIndicator3.IndicatorCategory.APPLICATION_STATUS
+            )
+            self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.ACTIVE)
+        else:
+            # Use the old AppIndicator3 API as fallback
+            self.indicator = AppIndicator3.Indicator.new(
+                "pomodoro-lock",
+                "pomodoro-lock",
+                AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+            )
+            self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
         
         # Create menu
         self.menu = Gtk.Menu()
@@ -164,6 +199,17 @@ class SystemTrayManager:
             self.indicator.set_icon("pomodoro-lock-break")
         else:
             self.indicator.set_icon("pomodoro-lock-paused")
+    
+    def stop(self):
+        """Stop the system tray indicator"""
+        if self.indicator:
+            try:
+                if APPINDICATOR_NEW_API:
+                    self.indicator.set_status(AyatanaAppIndicator3.IndicatorStatus.PASSIVE)
+                else:
+                    self.indicator.set_status(AppIndicator3.IndicatorStatus.PASSIVE)
+            except Exception as e:
+                logging.error(f"Error stopping system tray: {e}")
 
 class ScreenManager:
     """Linux screen manager using Xlib"""
