@@ -10,10 +10,11 @@ from tkinter import ttk, messagebox
 class TimerWindow(tk.Toplevel):
     """Tkinter-based timer window for Windows"""
     
-    def __init__(self, parent=None, on_close=None, on_power=None):
+    def __init__(self, parent=None, on_close=None, on_power=None, on_pause_snooze=None):
         super().__init__(parent)
         self.on_close = on_close
         self.on_power = on_power
+        self.on_pause_snooze = on_pause_snooze
         
         self.title("Pomodoro Lock")
         self.overrideredirect(True)  # Remove window decorations
@@ -84,6 +85,24 @@ class TimerWindow(tk.Toplevel):
         # Add tooltip for power button
         self._create_tooltip(self.power_button, "Quit Pomodoro Lock")
         
+        # Pause/Snooze button
+        self.pause_snooze_button = tk.Button(
+            button_frame,
+            text="⏸",
+            font=('Arial', 12, 'bold'),
+            fg='#4ecdc4',
+            bg='#333333',
+            bd=0,
+            relief='flat',
+            command=self._on_pause_snooze_clicked,
+            width=3,
+            height=1
+        )
+        self.pause_snooze_button.pack(side='right')
+        
+        # Add tooltip for pause/snooze button
+        self._create_tooltip(self.pause_snooze_button, "Pause and auto-resume in 10 minutes")
+        
         # Bind mouse events for dragging
         self.bind('<Button-1>', self._on_button_press)
         self.bind('<B1-Motion>', self._on_motion)
@@ -153,6 +172,11 @@ class TimerWindow(tk.Toplevel):
         if self.on_power:
             self.on_power()
     
+    def _on_pause_snooze_clicked(self):
+        """Handle pause/snooze button click"""
+        if self.on_pause_snooze:
+            self.on_pause_snooze()
+    
     def update_timer(self, seconds, state='work', is_paused=False):
         """Update the timer display"""
         minutes = seconds // 60
@@ -169,6 +193,24 @@ class TimerWindow(tk.Toplevel):
             self._set_break_style()
         else:
             self._set_work_style()
+        
+        # Update pause/snooze button appearance
+        self._update_pause_button(is_paused)
+    
+    def _update_pause_button(self, is_paused):
+        """Update the pause/snooze button appearance based on timer state"""
+        try:
+            if is_paused:
+                # Show play icon when paused
+                self.pause_snooze_button.config(text="▶")
+                self._create_tooltip(self.pause_snooze_button, "Resume timer")
+            else:
+                # Show pause icon when running
+                self.pause_snooze_button.config(text="⏸")
+                self._create_tooltip(self.pause_snooze_button, "Pause and auto-resume in 10 minutes")
+        except Exception as e:
+            # Fallback if button update fails
+            pass
     
     def _set_work_style(self):
         """Set work state styling"""
@@ -178,6 +220,7 @@ class TimerWindow(tk.Toplevel):
             self.timer_label.configure(bg='#333333')
             self.close_button.configure(bg='#333333')
             self.power_button.configure(bg='#333333')
+            self.pause_snooze_button.configure(bg='#333333')
             self.current_state = 'work'
             self.is_paused = False
     
@@ -189,6 +232,7 @@ class TimerWindow(tk.Toplevel):
             self.timer_label.configure(bg='#ffa500')
             self.close_button.configure(bg='#ffa500')
             self.power_button.configure(bg='#ffa500')
+            self.pause_snooze_button.configure(bg='#ffa500')
             self.is_paused = True
     
     def _set_break_style(self):
@@ -199,6 +243,7 @@ class TimerWindow(tk.Toplevel):
             self.timer_label.configure(bg='#dc143c')
             self.close_button.configure(bg='#dc143c')
             self.power_button.configure(bg='#dc143c')
+            self.pause_snooze_button.configure(bg='#dc143c')
             self.current_state = 'break'
             self.is_paused = False
     

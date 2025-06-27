@@ -104,6 +104,10 @@ class PomodoroTimer:
         self.timer_thread = None
         self.stop_event = threading.Event()
         
+        # Snooze functionality
+        self.snooze_timer = None
+        self.paused_time = None
+        
         # Setup signal handlers (no SIGUSR1)
         self._setup_signal_handlers()
         
@@ -114,7 +118,14 @@ class PomodoroTimer:
         
         # Only now, after lock is acquired, create tray and GUI
         self._init_gui_components()
-        self.system_tray = SystemTrayManager(self)
+        
+        try:
+            self.system_tray = SystemTrayManager(self)
+            logging.info("System tray initialized successfully")
+        except Exception as e:
+            logging.error(f"Failed to initialize system tray: {e}")
+            # Continue without system tray
+            self.system_tray = None
         
         # Always show the timer window on startup
         self.timer_window.show_window()
@@ -172,28 +183,37 @@ class PomodoroTimer:
     
     def _init_gui_components(self):
         """Initialize GUI components"""
-        # Create timer window
-        self.timer_window = TimerWindow(
-            on_close=self._on_timer_close,
-            on_power=self._on_power_clicked
-        )
-        
-        # Create multi-display overlay
-        self.multi_overlay = MultiDisplayOverlay()
-        
-        # Hide timer window initially
-        self.timer_window.hide_window()
+        try:
+            # Create timer window
+            self.timer_window = TimerWindow(
+                on_close=self._on_timer_close,
+                on_power=self._on_power_clicked,
+                on_pause_snooze=self._on_pause_snooze_clicked
+            )
+            
+            # Create multi-display overlay
+            self.multi_overlay = MultiDisplayOverlay()
+            
+            # Hide timer window initially
+            self.timer_window.hide_window()
+            
+            logging.info("GUI components initialized successfully")
+        except Exception as e:
+            logging.error(f"Failed to initialize GUI components: {e}")
+            # Don't re-raise - try to continue without GUI
+            raise
     
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown only (no SIGUSR1)"""
         def signal_handler(signum, frame):
-            logging.info("Received shutdown signal")
+            logging.info(f"Received shutdown signal {signum}")
             self.quit_application()
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
         if SYSTEM == "linux":
             signal.signal(signal.SIGHUP, signal_handler)
+            # Don't handle SIGUSR1 as it's not used anymore
     
     def _acquire_lock(self):
         """Acquire file lock to prevent multiple instances"""
@@ -251,24 +271,33 @@ class PomodoroTimer:
     
     def _timer_loop(self):
         """Main timer loop"""
+        logging.info("Starting timer loop")
         while self.is_running and not self.stop_event.is_set():
-            if not self.is_paused:
-                if self.current_time > 0:
-                    self.current_time -= 1
+            try:
+                if not self.is_paused:
+                    if self.current_time > 0:
+                        self.current_time -= 1
+                        
+                        # Check for notification time
+                        if self.current_time == self.notification_time:
+                            self._send_break_notification()
+                        
+                        # Check if session ended
+                        if self.current_time == 0:
+                            self._session_ended()
                     
-                    # Check for notification time
-                    if self.current_time == self.notification_time:
-                        self._send_break_notification()
-                    
-                    # Check if session ended
-                    if self.current_time == 0:
-                        self._session_ended()
+                    # Note: GUI updates are handled by the main thread callbacks
+                    # (_gtk_update_callback or _tkinter_update_callback)
+                    # This prevents race conditions and memory corruption
                 
-                # Note: GUI updates are handled by the main thread callbacks
-                # (_gtk_update_callback or _tkinter_update_callback)
-                # This prevents race conditions and memory corruption
-            
-            time.sleep(1)
+                time.sleep(1)
+            except Exception as e:
+                logging.error(f"Error in timer loop: {e}")
+                # Continue the timer loop even if there's an error
+                # Don't quit the application due to timer errors
+                time.sleep(1)
+        
+        logging.info("Timer loop ended")
     
     def _send_break_notification(self):
         """Send notification before break"""
@@ -368,9 +397,16 @@ class PomodoroTimer:
                     self.is_paused
                 )
             
-            # Update break overlay
-            if not self.is_work_session:
-                self.multi_overlay.update_timer(self.current_time)
+            # Update break overlay only if not in work session and not paused
+            if not self.is_work_session and not self.is_paused:
+                try:
+                    self.multi_overlay.update_timer(self.current_time)
+                except RecursionError as e:
+                    logging.error(f"Recursion error in overlay update: {e}")
+                    # Force cleanup and recreate overlays
+                    self._recreate_overlays()
+                except Exception as e:
+                    logging.error(f"Failed to update break overlay: {e}")
             
             # Update system tray
             self._update_system_tray()
@@ -378,9 +414,24 @@ class PomodoroTimer:
             logging.error(f"Failed to update GUI: {e}")
             # Don't re-raise - just log and continue
     
+    def _recreate_overlays(self):
+        """Recreate overlays to handle monitor sleep/wake scenarios"""
+        try:
+            logging.info("Recreating overlays due to monitor changes")
+            self.multi_overlay.destroy_all()
+            time.sleep(0.1)  # Small delay to ensure cleanup
+            self.multi_overlay.create_overlays()
+            if not self.is_work_session:
+                self.multi_overlay.show_all()
+        except Exception as e:
+            logging.error(f"Failed to recreate overlays: {e}")
+    
     def _update_system_tray(self):
         """Update system tray status"""
         try:
+            if self.system_tray is None:
+                return  # System tray not available
+            
             state = 'break' if not self.is_work_session else 'work'
             self.system_tray.update_status(state, self.current_time)
         except Exception as e:
@@ -423,6 +474,7 @@ class PomodoroTimer:
         """GTK timer callback for GUI updates"""
         try:
             if not self.is_running:
+                logging.info("Stopping GTK main loop")
                 Gtk.main_quit()
                 return False
             
@@ -431,6 +483,7 @@ class PomodoroTimer:
         except Exception as e:
             logging.error(f"Error in GTK update callback: {e}")
             # Continue the timer even if GUI update fails
+            # Don't quit the application due to GUI errors
             return True
     
     def _tkinter_update_callback(self):
@@ -460,22 +513,95 @@ class PomodoroTimer:
         """Handle power button click"""
         self.quit_application()
     
+    def _on_pause_snooze_clicked(self):
+        """Handle pause/snooze button click"""
+        try:
+            if self.is_paused:
+                # If already paused, resume the timer immediately
+                self.is_paused = False
+                logging.info("Timer resumed manually")
+                self.notification_manager.send_notification(
+                    "Pomodoro Lock",
+                    "Timer resumed!",
+                    "normal"
+                )
+            else:
+                # Pause the timer and set up auto-resume after 10 minutes
+                self.is_paused = True
+                snooze_seconds = 10 * 60  # 10 minutes
+                
+                # Store the original time when paused
+                self.paused_time = self.current_time
+                
+                # Set up auto-resume timer
+                self.snooze_timer = threading.Timer(snooze_seconds, self._auto_resume_timer)
+                self.snooze_timer.daemon = True
+                self.snooze_timer.start()
+                
+                logging.info(f"Timer paused and will auto-resume in {snooze_seconds // 60} minutes")
+                self.notification_manager.send_notification(
+                    "Pomodoro Lock",
+                    f"Timer paused. Will resume in {snooze_seconds // 60} minutes",
+                    "normal"
+                )
+            
+            # Update GUI to reflect the new state
+            self._update_gui()
+            
+        except Exception as e:
+            logging.error(f"Error in pause/snooze functionality: {e}")
+    
+    def _auto_resume_timer(self):
+        """Automatically resume the timer after snooze period"""
+        try:
+            if self.is_paused:
+                self.is_paused = False
+                logging.info("Timer auto-resumed after snooze period")
+                self.notification_manager.send_notification(
+                    "Pomodoro Lock",
+                    "Timer resumed automatically!",
+                    "normal"
+                )
+                
+                # Update GUI to reflect the new state
+                self._update_gui()
+                
+        except Exception as e:
+            logging.error(f"Error in auto-resume functionality: {e}")
+    
     def quit_application(self):
         """Quit the application"""
         logging.info("Quitting Pomodoro Lock")
         self.is_running = False
         self.stop_event.set()
         
+        # Cancel any active snooze timer
+        if self.snooze_timer and self.snooze_timer.is_alive():
+            try:
+                self.snooze_timer.cancel()
+                logging.info("Cancelled active snooze timer")
+            except Exception as e:
+                logging.error(f"Error cancelling snooze timer: {e}")
+        
         # Stop system tray
-        if hasattr(self.system_tray, 'stop'):
-            self.system_tray.stop()
+        if self.system_tray is not None and hasattr(self.system_tray, 'stop'):
+            try:
+                self.system_tray.stop()
+            except Exception as e:
+                logging.error(f"Error stopping system tray: {e}")
         
         # Release lock
-        self.file_lock.release_lock()
+        try:
+            self.file_lock.release_lock()
+        except Exception as e:
+            logging.error(f"Error releasing lock: {e}")
         
         # Destroy GUI components
-        self.timer_window.destroy_window()
-        self.multi_overlay.destroy_all()
+        try:
+            self.timer_window.destroy_window()
+            self.multi_overlay.destroy_all()
+        except Exception as e:
+            logging.error(f"Error destroying GUI components: {e}")
         
         # Quit GUI loop
         if SYSTEM == "linux":
@@ -547,12 +673,16 @@ class PomodoroTimer:
 def main():
     """Main entry point"""
     try:
+        logging.info("Starting Pomodoro Lock application")
         app = PomodoroTimer()
     except KeyboardInterrupt:
         logging.info("Application interrupted by user")
     except Exception as e:
         logging.error(f"Application error: {e}")
-        raise
+        # Don't re-raise the exception to prevent unexpected quits
+        # Just log the error and exit gracefully
+        return 1
+    return 0
 
 if __name__ == "__main__":
     main() 

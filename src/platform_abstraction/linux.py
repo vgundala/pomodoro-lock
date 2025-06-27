@@ -8,8 +8,12 @@ import json
 import fcntl
 import subprocess
 import logging
+import warnings
 import platform as platform_module
 from pathlib import Path
+
+# Suppress deprecated appindicator warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="gi.repository.AppIndicator3")
 
 # Check for Linux
 if platform_module.system().lower() != "linux":
@@ -71,7 +75,15 @@ class NotificationManager:
         
         try:
             notification = notify2.Notification(title, message)
-            notification.set_urgency(urgency)
+            
+            # Convert string urgency to notify2 constants
+            if urgency == "low":
+                notification.set_urgency(notify2.URGENCY_LOW)
+            elif urgency == "high":
+                notification.set_urgency(notify2.URGENCY_CRITICAL)
+            else:  # normal
+                notification.set_urgency(notify2.URGENCY_NORMAL)
+            
             notification.show()
             return True
         except Exception as e:

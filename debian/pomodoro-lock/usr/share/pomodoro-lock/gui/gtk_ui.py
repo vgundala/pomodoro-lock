@@ -12,10 +12,11 @@ from gi.repository import Gtk, GLib, Gdk
 class TimerWindow(Gtk.Window):
     """GTK-based timer window for Linux"""
     
-    def __init__(self, on_close=None, on_power=None):
+    def __init__(self, on_close=None, on_power=None, on_pause_snooze=None):
         Gtk.Window.__init__(self)
         self.on_close = on_close
         self.on_power = on_power
+        self.on_pause_snooze = on_pause_snooze
         
         self.set_title("Pomodoro Lock")
         self.set_decorated(False)
@@ -100,6 +101,9 @@ class TimerWindow(Gtk.Window):
         .power-button {
             color: #ffa726;
         }
+        .pause-button {
+            color: #4ecdc4;
+        }
         """
         css_provider.load_from_data(css.encode())
         style_context = self.box.get_style_context()
@@ -159,6 +163,24 @@ class TimerWindow(Gtk.Window):
         self.power_button.connect("clicked", self._on_power_clicked)
         self.overlay.add_overlay(self.power_button)
         
+        # Pause/Snooze button (⏸) - top-right corner
+        self.pause_snooze_button = Gtk.Button(label="⏸")
+        self.pause_snooze_button.set_size_request(25, 25)
+        self.pause_snooze_button.set_halign(Gtk.Align.END)
+        self.pause_snooze_button.set_valign(Gtk.Align.START)
+        self.pause_snooze_button.set_margin_end(5)
+        self.pause_snooze_button.set_margin_top(5)
+        
+        # Add tooltip for pause/snooze button
+        self.pause_snooze_button.set_tooltip_text("Pause and auto-resume in 10 minutes")
+        
+        pause_style = self.pause_snooze_button.get_style_context()
+        pause_style.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        pause_style.add_class("corner-button")
+        pause_style.add_class("pause-button")
+        self.pause_snooze_button.connect("clicked", self._on_pause_snooze_clicked)
+        self.overlay.add_overlay(self.pause_snooze_button)
+        
         # Connect mouse events for dragging
         self.event_box.connect("button-press-event", self._on_button_press)
         self.event_box.connect("button-release-event", self._on_button_release)
@@ -213,6 +235,10 @@ class TimerWindow(Gtk.Window):
         if self.on_power:
             self.on_power()
     
+    def _on_pause_snooze_clicked(self, widget):
+        if self.on_pause_snooze:
+            self.on_pause_snooze()
+    
     def update_timer(self, seconds, state='work', is_paused=False):
         """Update the timer display"""
         try:
@@ -239,6 +265,10 @@ class TimerWindow(Gtk.Window):
                 style_context.add_class("paused")
             elif state == "break":
                 style_context.add_class("break")
+            
+            # Update pause/snooze button appearance
+            self._update_pause_button(is_paused)
+            
         except Exception as e:
             # Fallback to simple text if markup fails
             try:
@@ -249,6 +279,21 @@ class TimerWindow(Gtk.Window):
             except Exception as fallback_error:
                 # Last resort - set a safe default
                 self.label.set_text("00:00")
+    
+    def _update_pause_button(self, is_paused):
+        """Update the pause/snooze button appearance based on timer state"""
+        try:
+            if is_paused:
+                # Show play icon when paused
+                self.pause_snooze_button.set_label("▶")
+                self.pause_snooze_button.set_tooltip_text("Resume timer")
+            else:
+                # Show pause icon when running
+                self.pause_snooze_button.set_label("⏸")
+                self.pause_snooze_button.set_tooltip_text("Pause and auto-resume in 10 minutes")
+        except Exception as e:
+            # Fallback if button update fails
+            pass
     
     def show_window(self):
         """Show the timer window"""
@@ -265,11 +310,35 @@ class TimerWindow(Gtk.Window):
     
     def lower_window(self):
         """Lower the window to ensure overlay is on top"""
-        self.lower()
+        try:
+            # Use the correct GTK method
+            self.get_window().lower()
+        except RecursionError as e:
+            print(f"Recursion error in lower_window: {e}")
+            # Fallback - just hide the window
+            self.hide()
+        except Exception as e:
+            print(f"Error in lower_window: {e}")
     
     def raise_window(self):
         """Raise the window back to normal level"""
-        self.raise_()
+        try:
+            # Use the correct GTK method
+            self.get_window().raise_()
+        except RecursionError as e:
+            print(f"Recursion error in raise_window: {e}")
+            # Fallback - just show the window
+            self.show_all()
+        except Exception as e:
+            print(f"Error in raise_window: {e}")
+    
+    def lower(self):
+        """Lower the window (alias for lower_window)"""
+        self.lower_window()
+    
+    def raise_(self):
+        """Raise the window (alias for raise_window)"""
+        self.raise_window()
 
 class FullScreenOverlay(Gtk.Window):
     """GTK-based fullscreen overlay for Linux"""
@@ -384,20 +453,39 @@ class FullScreenOverlay(Gtk.Window):
             # Ensure window is shown and raised to top
             self.show_all()
             self.present()
-            self.raise_()
+            # Use the correct GTK method to avoid recursion
+            try:
+                self.get_window().raise_()
+            except Exception as e:
+                print(f"Error raising overlay window: {e}")
             
             # Force the window to stay on top
             self.set_keep_above(True)
             
-        except Exception as e:
-            # Fallback to regular fullscreen if monitor-specific positioning fails
-            self.set_type_hint(Gdk.WindowTypeHint.DESKTOP)
-            self.set_keep_above(True)
-            self.set_accept_focus(False)
-            self.fullscreen()
+        except RecursionError as e:
+            # Handle recursion error specifically
+            print(f"Recursion error in show_overlay: {e}")
+            # Fallback to basic show without raise
             self.show_all()
             self.present()
-            self.raise_()
+        except Exception as e:
+            # Fallback to regular fullscreen if monitor-specific positioning fails
+            try:
+                self.set_type_hint(Gdk.WindowTypeHint.DESKTOP)
+                self.set_keep_above(True)
+                self.set_accept_focus(False)
+                self.fullscreen()
+                self.show_all()
+                self.present()
+                # Use the correct GTK method to avoid recursion
+                try:
+                    self.get_window().raise_()
+                except Exception as e:
+                    print(f"Error raising overlay window: {e}")
+            except Exception as fallback_error:
+                print(f"Fallback show_overlay also failed: {fallback_error}")
+                # Last resort - just show the window
+                self.show_all()
     
     def hide_overlay(self):
         """Hide the overlay"""
@@ -406,6 +494,16 @@ class FullScreenOverlay(Gtk.Window):
     def destroy_overlay(self):
         """Destroy the overlay"""
         self.destroy()
+    
+    def raise_(self):
+        """Raise the overlay (alias for raise_window)"""
+        try:
+            # Use the correct GTK method name
+            self.get_window().raise_()
+        except Exception as e:
+            print(f"Error in FullScreenOverlay.raise_(): {e}")
+            # Fallback to just showing the window
+            self.show_all()
 
 class MultiDisplayOverlay:
     """GTK-based multi-display overlay manager for Linux"""
@@ -449,6 +547,10 @@ class MultiDisplayOverlay:
             try:
                 print(f"Showing overlay {i}")
                 overlay.show_overlay()
+            except RecursionError as e:
+                print(f"Recursion error showing overlay {i}: {e}")
+                # Skip this overlay to prevent infinite recursion
+                continue
             except Exception as e:
                 print(f"Failed to show overlay {i}: {e}")
     
@@ -459,6 +561,10 @@ class MultiDisplayOverlay:
             try:
                 print(f"Hiding overlay {i}")
                 overlay.hide_overlay()
+            except RecursionError as e:
+                print(f"Recursion error hiding overlay {i}: {e}")
+                # Skip this overlay to prevent infinite recursion
+                continue
             except Exception as e:
                 print(f"Failed to hide overlay {i}: {e}")
     
@@ -467,6 +573,10 @@ class MultiDisplayOverlay:
         for i, overlay in enumerate(self.overlays):
             try:
                 overlay.update_timer(seconds)
+            except RecursionError as e:
+                print(f"Recursion error updating overlay {i} timer: {e}")
+                # Skip this overlay to prevent infinite recursion
+                continue
             except Exception as e:
                 print(f"Failed to update overlay {i} timer: {e}")
     
@@ -477,6 +587,11 @@ class MultiDisplayOverlay:
             try:
                 print(f"Destroying overlay {i}")
                 overlay.destroy_overlay()
+            except RecursionError as e:
+                print(f"Recursion error destroying overlay {i}: {e}")
+                # Force destroy by setting overlay to None
+                self.overlays[i] = None
+                continue
             except Exception as e:
                 print(f"Failed to destroy overlay {i}: {e}")
         self.overlays.clear() 
